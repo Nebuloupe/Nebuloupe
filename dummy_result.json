@@ -1,0 +1,275 @@
+{
+  "scan_id": "nl-scan-0001",
+  "provider": "AWS",
+  "target_account": "123456789012",
+  "region": "us-east-1",
+  "started_at": "2026-03-13T08:00:00Z",
+  "finished_at": "2026-03-13T08:00:12Z",
+  "duration_seconds": 12,
+  "summary": {
+    "total_checks": 10,
+    "passed": 3,
+    "failed": 6,
+    "warnings": 1,
+    "compliance_score": 40
+  },
+  "findings": [
+    {
+      "id": "NL-001",
+      "rule_id": "CIS-AWS-1.1",
+      "cloud_provider": "AWS",
+      "category": "Storage",
+      "check": "Bucket is Public",
+      "description": "S3 bucket 'project-backups' allows public read access",
+      "severity": "HIGH",
+      "status": "FAIL",
+      "resource": {
+        "type": "aws_s3_bucket",
+        "id": "project-backups",
+        "cloud_resource_id": "arn:aws:s3:::project-backups",
+        "region": "us-east-1",
+        "attributes": {
+          "acl": "public-read",
+          "policy": null
+        }
+      },
+      "evidence": {
+        "access_control_list": "public-read",
+        "public_access_block": {
+          "BlockPublicAcls": false,
+          "IgnorePublicAcls": false
+        }
+      },
+      "detected_at": "2026-03-13T08:00:01Z",
+      "remediation": "Restrict bucket ACLs and enable S3 Block Public Access. Review bucket policy to remove public principals.",
+      "references": ["https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html"]
+    },
+    {
+      "id": "NL-002",
+      "rule_id": "CIS-AWS-1.2",
+      "cloud_provider": "AWS",
+      "category": "Storage",
+      "check": "Bucket is Unencrypted",
+      "description": "S3 bucket 'analytics-raw' has no default encryption configured",
+      "severity": "MEDIUM",
+      "status": "FAIL",
+      "resource": {
+        "type": "aws_s3_bucket",
+        "id": "analytics-raw",
+        "cloud_resource_id": "arn:aws:s3:::analytics-raw",
+        "region": "us-east-1",
+        "attributes": {
+          "default_server_side_encryption": null
+        }
+      },
+      "evidence": {
+        "server_side_encryption_configuration": null
+      },
+      "detected_at": "2026-03-13T08:00:02Z",
+      "remediation": "Enable default encryption on the bucket (SSE-S3 or SSE-KMS).",
+      "references": ["https://docs.aws.amazon.com/AmazonS3/latest/dev/bucket-encryption.html"]
+    },
+    {
+      "id": "NL-003",
+      "rule_id": "CIS-AWS-3.1",
+      "cloud_provider": "AWS",
+      "category": "Network",
+      "check": "Port 22/3389 is Open to World",
+      "description": "Security Group 'sg-ssh-rdp' allows 0.0.0.0/0 on ports 22 and 3389",
+      "severity": "HIGH",
+      "status": "FAIL",
+      "resource": {
+        "type": "aws_security_group",
+        "id": "sg-ssh-rdp",
+        "cloud_resource_id": "arn:aws:ec2:us-east-1:123456789012:security-group/sg-ssh-rdp",
+        "region": "us-east-1",
+        "attributes": {
+          "ingress": [
+            { "from_port": 22, "to_port": 22, "cidr_blocks": ["0.0.0.0/0"] },
+            { "from_port": 3389, "to_port": 3389, "cidr_blocks": ["0.0.0.0/0"] }
+          ]
+        }
+      },
+      "evidence": {
+        "ingress_rules": ["0.0.0.0/0:22", "0.0.0.0/0:3389"]
+      },
+      "detected_at": "2026-03-13T08:00:03Z",
+      "remediation": "Restrict SSH/RDP access to known management IPs or use bastion hosts and VPNs.",
+      "references": ["https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html"]
+    },
+    {
+      "id": "NL-004",
+      "rule_id": "CIS-AWS-3.2",
+      "cloud_provider": "AWS",
+      "category": "Network",
+      "check": "Instance is in Default VPC",
+      "description": "EC2 instance 'i-0abcd1234efgh5678' is launched in the default VPC",
+      "severity": "LOW",
+      "status": "PASS",
+      "resource": {
+        "type": "aws_instance",
+        "id": "i-0abcd1234efgh5678",
+        "cloud_resource_id": "arn:aws:ec2:us-east-1:123456789012:instance/i-0abcd1234efgh5678",
+        "region": "us-east-1",
+        "attributes": {
+          "vpc_id": "vpc-0default",
+          "subnet_id": "subnet-0123abcd"
+        }
+      },
+      "evidence": {
+        "vpc_id": "vpc-0default"
+      },
+      "detected_at": "2026-03-13T08:00:04Z",
+      "remediation": "Consider launching critical workloads in dedicated VPCs with explicit network controls.",
+      "references": []
+    },
+    {
+      "id": "NL-005",
+      "rule_id": "CIS-AWS-5.1",
+      "cloud_provider": "AWS",
+      "category": "Identity",
+      "check": "Root Account has no MFA",
+      "description": "Root account for this AWS account does not have MFA enabled",
+      "severity": "HIGH",
+      "status": "FAIL",
+      "resource": {
+        "type": "aws_iam_account",
+        "id": "root",
+        "cloud_resource_id": "account:123456789012:root",
+        "attributes": {
+          "mfa_enabled": false
+        }
+      },
+      "evidence": {
+        "mfa_devices": []
+      },
+      "detected_at": "2026-03-13T08:00:05Z",
+      "remediation": "Enable MFA on the root account and avoid using root for daily tasks.",
+      "references": ["https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_root.html"]
+    },
+    {
+      "id": "NL-006",
+      "rule_id": "CIS-AWS-5.2",
+      "cloud_provider": "AWS",
+      "category": "Identity",
+      "check": "User Keys are >90 Days Old",
+      "description": "IAM user 'deploy-bot' has access keys last rotated 120 days ago",
+      "severity": "MEDIUM",
+      "status": "FAIL",
+      "resource": {
+        "type": "aws_iam_user",
+        "id": "deploy-bot",
+        "cloud_resource_id": "arn:aws:iam::123456789012:user/deploy-bot",
+        "attributes": {
+          "access_key_last_rotated": "2025-11-13T07:30:00Z"
+        }
+      },
+      "evidence": {
+        "access_keys": [
+          { "id": "AKIAEXAMPLE1", "last_rotated": "2025-11-13T07:30:00Z" }
+        ]
+      },
+      "detected_at": "2026-03-13T08:00:06Z",
+      "remediation": "Rotate access keys and adopt short-lived credentials (STS, OIDC) where possible.",
+      "references": ["https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"]
+    },
+    {
+      "id": "NL-007",
+      "rule_id": "CIS-AWS-6.1",
+      "cloud_provider": "AWS",
+      "category": "Logging",
+      "check": "CloudTrail/Logging is OFF",
+      "description": "No multi-region CloudTrail is enabled for this account",
+      "severity": "HIGH",
+      "status": "FAIL",
+      "resource": {
+        "type": "aws_cloudtrail",
+        "id": "none",
+        "cloud_resource_id": "account:123456789012:cloudtrail:global",
+        "attributes": {
+          "multi_region_trail": false,
+          "is_logging": false
+        }
+      },
+      "evidence": {
+        "is_logging": false
+      },
+      "detected_at": "2026-03-13T08:00:07Z",
+      "remediation": "Enable multi-region CloudTrail and centralize logs to an encrypted S3 bucket.",
+      "references": ["https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and-update-a-trail.html"]
+    },
+    {
+      "id": "NL-008",
+      "rule_id": "NL-IaC-001",
+      "cloud_provider": "IaC",
+      "category": "IaC",
+      "check": "Terraform file contains passwords",
+      "description": "Terraform file 'modules/db/main.tf' contains a hard-coded password in variable 'db_password'",
+      "severity": "CRITICAL",
+      "status": "FAIL",
+      "resource": {
+        "type": "terraform_file",
+        "path": "modules/db/main.tf",
+        "line": 42,
+        "cloud_resource_id": "file://modules/db/main.tf:42"
+      },
+      "evidence": {
+        "snippet": "variable \"db_password\" { default = \"SuperSecret123!\" }"
+      },
+      "detected_at": "2026-03-13T08:00:08Z",
+      "remediation": "Remove hard-coded secrets; use secret managers (AWS Secrets Manager, SSM Parameter Store) or environment injection.",
+      "references": ["https://www.terraform.io/docs/language/values/variables.html#sensitive-variables"]
+    },
+    {
+      "id": "NL-009",
+      "rule_id": "NL-IaC-002",
+      "cloud_provider": "IaC",
+      "category": "IaC",
+      "check": "Terraform plans open Security Groups",
+      "description": "Planned changes open a security group 'web-sg' to 0.0.0.0/0 on port 80",
+      "severity": "HIGH",
+      "status": "WARNING",
+      "resource": {
+        "type": "terraform_plan",
+        "path": "plans/plan-20260313.json",
+        "cloud_resource_id": "plan://plans/plan-20260313.json#aws_security_group.web-sg",
+        "change": {
+          "resource": "aws_security_group.web-sg",
+          "action": "update",
+          "ingress_added": [ { "from_port": 80, "to_port": 80, "cidr_blocks": ["0.0.0.0/0"] } ]
+        }
+      },
+      "evidence": {
+        "plan_snippet": "+ ingress { from_port = 80 to_port = 80 cidr_blocks = [\"0.0.0.0/0\"] }"
+      },
+      "detected_at": "2026-03-13T08:00:09Z",
+      "remediation": "Review planned network changes before apply; disallow wide-open ingress in CI policy checks.",
+      "references": ["https://www.terraform.io/cli/commands/plan"]
+    },
+    {
+      "id": "NL-010",
+      "rule_id": "CIS-AWS-7.1",
+      "cloud_provider": "AWS",
+      "category": "General",
+      "check": "EBS/Disk Volumes are Unencrypted",
+      "description": "EBS volume 'vol-0a1b2c3d4e5f6a7b8' is not encrypted",
+      "severity": "MEDIUM",
+      "status": "FAIL",
+      "resource": {
+        "type": "aws_ebs_volume",
+        "id": "vol-0a1b2c3d4e5f6a7b8",
+        "cloud_resource_id": "arn:aws:ec2:us-east-1:123456789012:volume/vol-0a1b2c3d4e5f6a7b8",
+        "attributes": {
+          "encrypted": false,
+          "size_gb": 100
+        }
+      },
+      "evidence": {
+        "encrypted": false
+      },
+      "detected_at": "2026-03-13T08:00:10Z",
+      "remediation": "Encrypt EBS volumes using AWS-managed or customer-managed KMS keys; enable encryption by default for new volumes.",
+      "references": ["https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html"]
+    }
+  ]
+}
