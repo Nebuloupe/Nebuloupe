@@ -1,6 +1,14 @@
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
 
+# Azure imports
+try:
+    from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential
+    from azure.core.exceptions import ClientAuthenticationError
+except ImportError:
+    DefaultAzureCredential = None
+    InteractiveBrowserCredential = None
+
 def get_aws_session():
     """
     Attempts to authenticate with AWS. 
@@ -42,6 +50,45 @@ def get_aws_session():
             print(f" Failed to authenticate: {e}")
             return None
 
+def get_azure_credentials():
+    """
+    Attempts to authenticate with Azure.
+    1. Checks local Azure CLI, Environment Variables, etc.
+    2. If not found or fails, prompts user for an interactive web login.
+    """
+    if DefaultAzureCredential is None:
+        print("[!] Azure libraries not installed. Please run: pip install -r requirements.txt")
+        return None
+
+    print("\n🔍 Attempting to authenticate with Azure...")
+    try:
+        # Step 1: Try local config (CLI, Env vars) first, skipping interactive browser
+        credential = DefaultAzureCredential(exclude_interactive_browser_credential=True)
+        # Verify it works by requesting a basic management token
+        credential.get_token("https://management.azure.com/.default")
+        print(" ✅ Authenticated using local Azure credentials.")
+        return credential
+        
+    except Exception:
+        print("\n--- Local Azure Credentials Not Found ---")
+        print("Starting interactive web login fallback...")
+        
+        try:
+            # Step 2: Fallback to interactive browser login
+            credential = InteractiveBrowserCredential()
+            # Verify the manual login works
+            credential.get_token("https://management.azure.com/.default")
+            print(" ✅ Interactive Authentication Successful!")
+            return credential
+            
+        except Exception as ex:
+            print(f" ❌ Failed to authenticate with Azure: {ex}")
+            return None
+
 if __name__ == "__main__":
-    # Test the script independently
-    get_aws_session()
+    # Test the scripts independently
+    # print("Testing AWS Auth...")
+    # get_aws_session()
+    
+    print("\nTesting Azure Auth...")
+    get_azure_credentials()
