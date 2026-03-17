@@ -7,6 +7,7 @@ azure-mgmt-monitor==7.0.0
 azure-mgmt-network==30.2.0
 azure-mgmt-resource==25.0.0
 azure-mgmt-storage==24.0.0
+azure-mgmt-subscription==3.1.1
 boto3==1.42.50
 botocore==1.42.50
 certifi==2026.1.4

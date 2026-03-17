@@ -9,10 +9,10 @@ def main():
     #     start_scan(session)
     # else:
     #     print("Exiting...")
-    session = get_azure_credentials()
-    if session:
+    azure_credentials = get_azure_credentials()
+    if azure_credentials:
         # Pass the "passport" (session) to the engine
-        start_scan(session)
+        start_scan(azure_credential=azure_credentials,cloud_scope="azure")
     else:
         print("Exiting...")
 
