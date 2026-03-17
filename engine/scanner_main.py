@@ -1,5 +1,5 @@
-from engine.auth import get_aws_session
-from engine.core_loop import start_scan
+from auth import get_aws_session
+from core_loop import start_scan
 
 def main():
     session = get_aws_session()
