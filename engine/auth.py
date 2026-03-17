@@ -75,7 +75,14 @@ def get_azure_credentials():
         
         try:
             # Step 2: Fallback to interactive browser login
-            credential = InteractiveBrowserCredential()
+            print("Note: If your subscriptions are in a different tenant, you will need to provide the Tenant ID.")
+            tenant_id = input("Enter Azure Tenant ID (leave blank for default): ").strip()
+            
+            if tenant_id:
+                credential = InteractiveBrowserCredential(tenant_id=tenant_id)
+            else:
+                credential = InteractiveBrowserCredential()
+                
             # Verify the manual login works
             credential.get_token("https://management.azure.com/.default")
             print(" ✅ Interactive Authentication Successful!")
