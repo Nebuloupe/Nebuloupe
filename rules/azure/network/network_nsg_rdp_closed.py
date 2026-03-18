@@ -2,10 +2,10 @@ import uuid
 from azure.mgmt.subscription import SubscriptionClient
 from azure.mgmt.network import NetworkManagementClient
 
-def is_port_exposed(ports_property, target_ports=(22, 3389)):
+def is_port_exposed(ports_property, target_ports=(3389,)):
     """
     Checks if a port property (string or list) overlaps with the target ports.
-    Handles '*', '22', '20-30', or lists of these.
+    Handles '*', '3389', '3380-3400', or lists of these.
     """
     if not ports_property:
         return False
@@ -46,7 +46,7 @@ def is_source_public(source_property):
 
 def run_check(credential):
     """
-    Checks if Azure Network Security Groups have rules exposing Port 22 or 3389 to the world.
+    Checks if Azure Network Security Groups have rules exposing Port 3389 (RDP) to the world.
     """
     findings = []
     
@@ -71,12 +71,12 @@ def run_check(credential):
                             # Extract destination ports (handling both single string and lists)
                             dest_ports = rule.destination_port_range if rule.destination_port_range else rule.destination_port_ranges
                             
-                            if is_source_public(source_prefixes) and is_port_exposed(dest_ports, [22, 3389]):
+                            if is_source_public(source_prefixes) and is_port_exposed(dest_ports, [3389]):
                                 
                                 findings.append({
                                     "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
-                                    "rule_id": "CIS-AZURE-9.1",
-                                    "check": "Port 22/3389 is Open to World",
+                                    "rule_id": "CIS-AZURE-9.2",
+                                    "check": "Port 3389 (RDP) is Open to World",
                                     "severity": "High",
                                     "status": "FAIL",
                                     "cloud_provider": "azure",
@@ -84,8 +84,8 @@ def run_check(credential):
                                     "resource_type": "Microsoft.Network/networkSecurityGroups/securityRules",
                                     "resource_id": rule.id,
                                     "region": nsg.location,
-                                    "description": f"NSG '{nsg.name}' allows inbound public access (0.0.0.0/0) to SSH/RDP ports via rule '{rule.name}'.",
-                                    "remediation": "Restrict SSH/RDP access to known IP addresses, or use Azure Bastion.",
+                                    "description": f"NSG '{nsg.name}' allows inbound public access (0.0.0.0/0) to RDP (port 3389) via rule '{rule.name}'.",
+                                    "remediation": "Restrict RDP access to known IP addresses, or use Azure Bastion.",
                                     "references": ["https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview"],
                                     "resource_attributes": {
                                         "nsg_name": nsg.name,
@@ -102,6 +102,6 @@ def run_check(credential):
                     print(f"       [!] Warning: Could not analyze NSG {nsg.name}: {e}")
                     
     except Exception as e:
-        print(f"   [!] Error querying Azure subscriptions for NSG open port check: {e}")
+        print(f"   [!] Error querying Azure subscriptions for NSG RDP check: {e}")
 
     return findings
