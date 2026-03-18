@@ -1,0 +1,76 @@
+{
+  "scan_metadata": {
+    "scan_id": "nl-scan-0001",
+    "scan_started_at": "2026-03-17T08:00:00Z",
+    "scan_completed_at": "2026-03-17T08:00:15Z",
+    "scan_duration_seconds": 15,
+    "cloud_scope": "aws",
+    "target_account": "123456789012",
+    "status": "success",
+    "errors": []
+  },
+  "summary": {
+    "total_findings": 2,
+    "severity_counts": {
+      "Critical": 0,
+      "High": 1,
+      "Medium": 0,
+      "Low": 1
+    },
+    "severity_score_total": 11,
+    "risk_score_by_cloud": {
+      "aws": 11,
+      "azure": 0,
+      "gcp": 0
+    }
+  },
+  "findings": [
+    {
+      "finding_id": "NL-001",
+      "rule_id": "CIS-AWS-1.1",
+      "check": "Bucket is Public",
+      "severity": "High",
+      "status": "FAIL",
+      "cloud_provider": "aws",
+      "category": "Storage",
+      "resource_type": "aws_s3_bucket",
+      "resource_id": "arn:aws:s3:::project-backups",
+      "region": "us-east-1",
+      "description": "S3 bucket 'project-backups' allows public read access.",
+      "remediation": "Restrict bucket ACLs and enable S3 Block Public Access.",
+      "references": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html"
+      ],
+      "resource_attributes": {
+        "tags": {
+          "Environment": "Production"
+        },
+        "acl": "public-read"
+      },
+      "evidence": {
+         "public_access_block_enabled": false
+      }
+    },
+    {
+      "finding_id": "NL-004",
+      "rule_id": "CIS-AWS-3.2",
+      "check": "Instance is in Default VPC",
+      "severity": "Low",
+      "status": "PASS",
+      "cloud_provider": "aws",
+      "category": "Network",
+      "resource_type": "aws_instance",
+      "resource_id": "i-0abcd1234efgh5678",
+      "region": "us-east-1",
+      "description": "EC2 instance is deployed in a restricted, custom VPC.",
+      "remediation": "Consider launching critical workloads in dedicated VPCs.",
+      "references": [],
+      "resource_attributes": {
+        "vpc_id": "vpc-09876xyz"
+      },
+      "evidence": {
+        "vpc_id": "vpc-09876xyz"
+      }
+    }
+  ]
+}
