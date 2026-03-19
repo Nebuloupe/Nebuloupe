@@ -63,10 +63,19 @@ def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
     
     if cloud_scope in ["aws", "all"] and aws_session:
         aws_rules_path = os.path.join('rules', 'aws')
+        
         if os.path.exists(aws_rules_path):
-            files = [f[:-3] for f in os.listdir(aws_rules_path) if f.endswith('.py') and f != '__init__.py']
-            for rule in files:
-                plugins_to_run.append(("aws", rule, aws_session))
+            # os.walk travels through the main directory and all subfolders
+            for root, dirs, files in os.walk(aws_rules_path):
+                for file in files:
+                    # 1. Only process .py files
+                    # 2. Skip __init__.py files
+                    if file.endswith('.py') and file != '__init__.py':
+                        
+                        # Build relative path from aws directory, e.g., 's3.s3_encryption'
+                        relative_path = os.path.relpath(os.path.join(root, file), aws_rules_path)
+                        rule_name = relative_path[:-3].replace(os.sep, '.')
+                        plugins_to_run.append(("aws", rule_name, aws_session))
 
     if cloud_scope in ["azure", "all"] and azure_credential:
         azure_rules_path = os.path.join('rules', 'azure')
