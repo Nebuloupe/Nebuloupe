@@ -1,5 +1,10 @@
 import boto3
+import logging
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
+
+# Suppress verbose Azure CLI/Identity logging
+logging.getLogger('azure.identity').setLevel(logging.ERROR)
+logging.getLogger('azure.core').setLevel(logging.ERROR)
 
 # Azure imports
 try:
@@ -21,16 +26,16 @@ def get_aws_session():
         sts = session.client('sts')
         identity = sts.get_caller_identity()
         
-        print(f" Authenticated using local credentials (Account: {identity['Account']})")
+        print(f"[+] Authenticated using local credentials (Account: {identity['Account']})")
         return session
 
     except (NoCredentialsError, PartialCredentialsError, ClientError):
-        print("\n--- AWS Credentials Not Found Locally ---")
-        print("Please enter your credentials manually:")
+        print("\n[*] AWS Credentials Not Found Locally")
+        print("[*] Please enter your credentials manually:")
         
-        access_key = input("AWS Access Key ID: ").strip()
-        secret_key = input("AWS Secret Access Key: ").strip()
-        region = input("Default Region (e.g., us-east-1): ").strip() or "us-east-1"
+        access_key = input("    AWS Access Key ID: ").strip()
+        secret_key = input("    AWS Secret Access Key: ").strip()
+        region = input("    Default Region (e.g., us-east-1): ").strip() or "us-east-1"
 
         try:
             # Step 2: Try to initialize with user-provided keys
@@ -43,11 +48,11 @@ def get_aws_session():
             sts = session.client('sts')
             sts.get_caller_identity()
             
-            print(f" Manual Authentication Successful!")
+            print(f"\n[+] Manual Authentication Successful!")
             return session
             
         except Exception as e:
-            print(f" Failed to authenticate: {e}")
+            print(f"\n[-] Failed to authenticate: {e}")
             return None
 
 def get_azure_credentials():
@@ -57,26 +62,26 @@ def get_azure_credentials():
     2. If not found or fails, prompts user for an interactive web login.
     """
     if DefaultAzureCredential is None:
-        print("[!] Azure libraries not installed. Please run: pip install -r requirements.txt")
+        print("[-] Azure libraries not installed. Please run: pip install -r requirements.txt")
         return None
 
-    print("\n🔍 Attempting to authenticate with Azure...")
+    print("\n[*] Attempting to authenticate with Azure...")
     try:
         # Step 1: Try local config (CLI, Env vars) first, skipping interactive browser
         credential = DefaultAzureCredential(exclude_interactive_browser_credential=True)
         # Verify it works by requesting a basic management token
         credential.get_token("https://management.azure.com/.default")
-        print(" ✅ Authenticated using local Azure credentials.")
+        print("[+] Authenticated using local Azure credentials.")
         return credential
         
     except Exception:
-        print("\n--- Local Azure Credentials Not Found ---")
-        print("Starting interactive web login fallback...")
+        print("\n[*] Local Azure Credentials Not Found")
+        print("[*] Starting interactive web login fallback...")
         
         try:
             # Step 2: Fallback to interactive browser login
-            print("Note: If your subscriptions are in a different tenant, you will need to provide the Tenant ID.")
-            tenant_id = input("Enter Azure Tenant ID (leave blank for default): ").strip()
+            print("[*] Note: If your subscriptions are in a different tenant, you will need to provide the Tenant ID.")
+            tenant_id = input("    Enter Azure Tenant ID (leave blank for default): ").strip()
             
             if tenant_id:
                 credential = InteractiveBrowserCredential(tenant_id=tenant_id)
@@ -85,11 +90,11 @@ def get_azure_credentials():
                 
             # Verify the manual login works
             credential.get_token("https://management.azure.com/.default")
-            print(" ✅ Interactive Authentication Successful!")
+            print("\n[+] Interactive Authentication Successful!")
             return credential
             
         except Exception as ex:
-            print(f" ❌ Failed to authenticate with Azure: {ex}")
+            print(f"\n[-] Failed to authenticate with Azure: {ex}")
             return None
 
 if __name__ == "__main__":

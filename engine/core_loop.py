@@ -16,7 +16,7 @@ SEVERITY_SCORES = {
 }
 
 def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
-    print(f"🔍 Scanning Infrastructure (Scope: {cloud_scope.upper()})...")
+    print(f"[*] Scanning Infrastructure (Scope: {cloud_scope.upper()})...")
     scan_id = f"nl-scan-{uuid.uuid4().hex[:8]}"
     start_time = time.time()
     start_time_iso = datetime.now().isoformat()
@@ -136,5 +136,5 @@ def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
     with open(output_file, 'w') as f:
         json.dump(full_report, f, indent=4)
         
-    print(f"\n✅ Scan Complete! Found {full_report['summary']['total_findings']} issue(s). Results saved to {output_file}")
+    print(f"\n[+] Scan Complete! Found {full_report['summary']['total_findings']} issue(s). Results saved to {output_file}")
     return full_report
