@@ -16,7 +16,7 @@ SEVERITY_SCORES = {
 }
 
 def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
-    print(f"🔍 Scanning Infrastructure (Scope: {cloud_scope.upper()})...")
+    print(f"[*] Scanning Infrastructure (Scope: {cloud_scope.upper()})...")
     scan_id = f"nl-scan-{uuid.uuid4().hex[:8]}"
     start_time = time.time()
     start_time_iso = datetime.now().isoformat()
@@ -61,24 +61,36 @@ def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
     # Build a list of plugins to execute based on the selected scope
     plugins_to_run = []
     
+    rules_base_path = 'rules'
+
     if cloud_scope in ["aws", "all"] and aws_session:
-        aws_rules_path = os.path.join('rules', 'aws')
+        aws_rules_path = os.path.join(rules_base_path, 'aws')
         if os.path.exists(aws_rules_path):
-            files = [f[:-3] for f in os.listdir(aws_rules_path) if f.endswith('.py') and f != '__init__.py']
-            for rule in files:
-                plugins_to_run.append(("aws", rule, aws_session))
+            # Recursively find all rules
+            for root, dirs, files in os.walk(aws_rules_path):
+                for f in files:
+                    if f.endswith('.py') and f != '__init__.py':
+                        # Convert file path to module path (e.g. aws.storage.rule)
+                        rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
+                        module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
+                        plugins_to_run.append(("aws", module_path, aws_session))
 
     if cloud_scope in ["azure", "all"] and azure_credential:
-        azure_rules_path = os.path.join('rules', 'azure')
+        azure_rules_path = os.path.join(rules_base_path, 'azure')
         if os.path.exists(azure_rules_path):
-            files = [f[:-3] for f in os.listdir(azure_rules_path) if f.endswith('.py') and f != '__init__.py']
-            for rule in files:
-                plugins_to_run.append(("azure", rule, azure_credential))
+            # Recursively find all rules
+            for root, dirs, files in os.walk(azure_rules_path):
+                for f in files:
+                    if f.endswith('.py') and f != '__init__.py':
+                        rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
+                        module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
+                        plugins_to_run.append(("azure", module_path, azure_credential))
                 
-    for provider, rule_name, auth_context in plugins_to_run:
+    for provider, module_path, auth_context in plugins_to_run:
+        rule_name = module_path.split('.')[-1]
         try:
             # 2. Dynamically import the rule module
-            module = importlib.import_module(f"rules.{provider}.{rule_name}")
+            module = importlib.import_module(f"rules.{module_path}")
             print(f"   [+] Running {provider.upper()} check: {rule_name}...")
             
             # 3. Execute the standard run_check function
@@ -124,5 +136,5 @@ def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
     with open(output_file, 'w') as f:
         json.dump(full_report, f, indent=4)
         
-    print(f"\n✅ Scan Complete! Found {full_report['summary']['total_findings']} issue(s). Results saved to {output_file}")
+    print(f"\n[+] Scan Complete! Found {full_report['summary']['total_findings']} issue(s). Results saved to {output_file}")
     return full_report
