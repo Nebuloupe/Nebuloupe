@@ -573,9 +573,10 @@ def page_landing():
 
         def toggle(cloud):
             if cloud in st.session_state.selected_clouds:
-                st.session_state.selected_clouds.remove(cloud)
+                st.session_state.selected_clouds = []
             else:
-                st.session_state.selected_clouds.append(cloud)
+                # Single-select behavior: selecting a cloud clears previous choices.
+                st.session_state.selected_clouds = [cloud]
 
         with c1:
             sel = "selected" if "aws" in st.session_state.selected_clouds else ""
@@ -617,7 +618,7 @@ def page_landing():
                 unsafe_allow_html=True
             )
         else:
-            st.markdown('<p class="nb-status">Select one or more cloud providers above</p>', unsafe_allow_html=True)
+            st.markdown('<p class="nb-status">Select one cloud provider above</p>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<p class="nb-section-label">② Run Scan</p>', unsafe_allow_html=True)
