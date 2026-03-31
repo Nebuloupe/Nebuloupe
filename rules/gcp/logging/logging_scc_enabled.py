@@ -1,13 +1,13 @@
 import uuid
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
     from googleapiclient.errors import HttpError
 
     findings = []
 
     try:
-        scc = discovery.build('securitycenter', 'v1', credentials=credentials)
+        scc = discovery.build('securitycenter', 'v1')
 
         # List sources for the project — a successful call confirms SCC is accessible/enabled
         sources_resp = scc.projects().sources().list(
@@ -41,13 +41,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Logging",
         "resource_type": "gcp_scc_project",

@@ -1,9 +1,9 @@
 import uuid
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
 
-    logging_svc = discovery.build('logging', 'v2', credentials=credentials)
+    logging_svc = discovery.build('logging', 'v2')
     findings = []
 
     buckets_resp = logging_svc.projects().locations().buckets().list(
@@ -38,6 +38,7 @@ def run_check(credentials, project_id):
             "Log Bucket Retention Lock Enabled",
             "Medium" if not secure else "Low",
             "FAIL" if not secure else "PASS",
+            project_id,
             bucket['name'],
             f"Log bucket '{bucket_name}' is {'not locked' if not locked else 'locked'} "
             f"with {retention_days} day(s) retention." if not secure
@@ -54,13 +55,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Logging",
         "resource_type": "gcp_logging_bucket",

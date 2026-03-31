@@ -1,9 +1,9 @@
 import uuid
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
 
-    compute = discovery.build('compute', 'v1', credentials=credentials)
+    compute = discovery.build('compute', 'v1')
     findings = []
 
     networks_resp = compute.networks().list(project=project_id).execute()
@@ -38,6 +38,7 @@ def run_check(credentials, project_id):
                 "VPC Peering Restricted",
                 "Medium" if risky else "Low",
                 "FAIL" if risky else "PASS",
+                project_id,
                 network['selfLink'],
                 f"Network '{network['name']}' has a peering to '{peer_network_name}' in project '{peer_project}' "
                 f"({'active' if is_active else 'inactive'})." if risky
@@ -56,13 +57,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Networking",
         "resource_type": "gcp_compute_network",

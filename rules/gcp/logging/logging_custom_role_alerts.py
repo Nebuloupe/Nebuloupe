@@ -9,11 +9,11 @@ CUSTOM_ROLE_FILTER = (
     '"google.iam.admin.v1.DeleteRole")'
 )
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
 
-    logging_svc = discovery.build('logging', 'v2', credentials=credentials)
-    monitoring = discovery.build('monitoring', 'v3', credentials=credentials)
+    logging_svc = discovery.build('logging', 'v2')
+    monitoring = discovery.build('monitoring', 'v3')
     findings = []
 
     # Step 1: check for a log-based metric covering custom role changes
@@ -67,13 +67,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Logging",
         "resource_type": "gcp_logging_metric",

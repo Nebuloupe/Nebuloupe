@@ -1,10 +1,10 @@
 import uuid
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
 
-    dns = discovery.build('dns', 'v1', credentials=credentials)
-    compute = discovery.build('compute', 'v1', credentials=credentials)
+    dns = discovery.build('dns', 'v1')
+    compute = discovery.build('compute', 'v1')
     findings = []
 
     # Get all VPC networks
@@ -33,6 +33,7 @@ def run_check(credentials, project_id):
             "DNS Logging Enabled on VPC Network",
             "Medium" if not dns_logging_on else "Low",
             "FAIL" if not dns_logging_on else "PASS",
+            project_id,
             net_url,
             f"Network '{network['name']}' does not have DNS logging enabled." if not dns_logging_on
             else f"Network '{network['name']}' has DNS logging enabled.",
@@ -45,13 +46,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Networking",
         "resource_type": "gcp_compute_network",

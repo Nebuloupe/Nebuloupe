@@ -1,9 +1,9 @@
 import uuid
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
 
-    compute = discovery.build('compute', 'v1', credentials=credentials)
+    compute = discovery.build('compute', 'v1')
     findings = []
 
     networks = compute.networks().list(project=project_id).execute()
@@ -18,6 +18,7 @@ def run_check(credentials, project_id):
             "Legacy VPC Network Absent",
             "High" if is_legacy else "Low",
             "FAIL" if is_legacy else "PASS",
+            project_id,
             network['selfLink'],
             f"Network '{network['name']}' is a legacy (non-subnet-mode) network." if is_legacy
             else f"Network '{network['name']}' is a modern subnet-mode network.",
@@ -30,13 +31,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Networking",
         "resource_type": "gcp_compute_network",

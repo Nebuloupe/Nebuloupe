@@ -1,9 +1,9 @@
 import uuid
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
 
-    compute = discovery.build('compute', 'v1', credentials=credentials)
+    compute = discovery.build('compute', 'v1')
     findings = []
 
     # Check backend services (global) for attached Cloud Armor security policies
@@ -33,6 +33,7 @@ def run_check(credentials, project_id):
             "Cloud Armor Configured on Backend Services",
             "High" if not armor_configured else "Low",
             "FAIL" if not armor_configured else "PASS",
+            project_id,
             bs['selfLink'],
             f"Backend service '{bs['name']}' does not have a Cloud Armor security policy attached." if not armor_configured
             else f"Backend service '{bs['name']}' is protected by Cloud Armor policy '{policy_name}'.",
@@ -44,13 +45,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Networking",
         "resource_type": "gcp_compute_backend_service",

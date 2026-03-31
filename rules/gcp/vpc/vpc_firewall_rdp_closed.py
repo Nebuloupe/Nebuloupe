@@ -1,9 +1,9 @@
 import uuid
 
-def run_check(credentials, project_id):
+def run_check(project_id: str):
     from googleapiclient import discovery
 
-    compute = discovery.build('compute', 'v1', credentials=credentials)
+    compute = discovery.build('compute', 'v1')
     findings = []
 
     firewalls = compute.firewalls().list(project=project_id).execute()
@@ -35,6 +35,7 @@ def run_check(credentials, project_id):
             "Firewall Rule RDP Open to Internet",
             "Critical" if rdp_open else "Low",
             "FAIL" if rdp_open else "PASS",
+            project_id,
             fw['selfLink'],
             f"Firewall rule '{fw['name']}' allows RDP (port 3389) from 0.0.0.0/0." if rdp_open
             else f"Firewall rule '{fw['name']}' does not expose RDP publicly.",
@@ -46,13 +47,14 @@ def run_check(credentials, project_id):
     return findings
 
 
-def create_finding(rule_id, check, severity, status, res_id, desc, rem, evidence):
+def create_finding(rule_id, check, severity, status, project_id, res_id, desc, rem, evidence):
     return {
         "finding_id": str(uuid.uuid4()),
         "rule_id": rule_id,
         "check": check,
         "severity": severity,
         "status": status,
+        "project_id": project_id,
         "cloud_provider": "gcp",
         "category": "Networking",
         "resource_type": "gcp_compute_firewall",
