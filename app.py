@@ -653,7 +653,7 @@ def run_scan():
         time.sleep(0.6)
 
     # Load real results
-    results_path = os.path.join(os.path.dirname(__file__), '..', 'output', 'results.json')
+    results_path = os.path.join(os.path.dirname(__file__), 'output', 'results.json')
     try:
         with open(results_path, "r") as f:
             st.session_state.results = json.load(f)
