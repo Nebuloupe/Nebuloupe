@@ -44,6 +44,28 @@ def run_check(credential, subscription_id=None, **kwargs):
                         "permissionGrantPolicyIdsAssignedToDefaultUserRole": granted_policies
                     }
                 })
+            else:
+                findings.append({
+                    "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                    "rule_id": "CIS-Azure-1.18",
+                    "check": "Ensure user consent to apps accessing company data is disabled",
+                    "severity": "Medium",
+                    "status": "PASS",
+                    "cloud_provider": "azure",
+                    "category": "Identity",
+                    "resource_type": "azure_entra_tenant",
+                    "resource_id": "tenant",
+                    "region": "global",
+                    "description": "User consent to third-party applications accessing company data is appropriately restricted.",
+                    "remediation": "No action required.",
+                    "references": ["https://learn.microsoft.com/en-us/azure/active-directory/manage-apps/configure-user-consent"],
+                    "resource_attributes": {
+                        "allowed_consent_policies": granted_policies
+                    },
+                    "evidence": {
+                        "permissionGrantPolicyIdsAssignedToDefaultUserRole": granted_policies
+                    }
+                })
     except Exception as e:
         print(f"       [!] Warning: Exception in entra_user_consent_disabled check: {e}")
 

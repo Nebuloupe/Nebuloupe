@@ -51,6 +51,28 @@ def run_check(credential, subscription_id=None, **kwargs):
                                 "global_admin_count": admins_count
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-Azure-1.3",
+                            "check": "Ensure there are between two and five Global Administrators",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Identity",
+                            "resource_type": "azure_entra_tenant",
+                            "resource_id": "tenant",
+                            "region": "global",
+                            "description": f"Found {admins_count} Global Administrators. Recommended is between 2 and 5.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/active-directory/roles/security-planning"],
+                            "resource_attributes": {
+                                "global_admin_count": admins_count
+                            },
+                            "evidence": {
+                                "global_admin_count": admins_count
+                            }
+                        })
     except Exception as e:
         print(f"       [!] Warning: Exception in entra_multiple_global_admins check: {e}")
 

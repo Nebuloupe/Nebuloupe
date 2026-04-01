@@ -52,6 +52,28 @@ def run_check(credential, subscription_id=None, **kwargs):
                         "policies_evaluated": len(policies)
                     }
                 })
+            else:
+                findings.append({
+                    "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                    "rule_id": "CIS-Azure-1.14",
+                    "check": "Ensure Identity Protection risk policies are active",
+                    "severity": "High",
+                    "status": "PASS",
+                    "cloud_provider": "azure",
+                    "category": "Identity",
+                    "resource_type": "azure_entra_tenant",
+                    "resource_id": "tenant",
+                    "region": "global",
+                    "description": "Active Conditional Access policies are enforcing user or sign-in risk levels.",
+                    "remediation": "No action required.",
+                    "references": ["https://learn.microsoft.com/en-us/azure/active-directory/identity-protection/howto-identity-protection-configure-risk-policies"],
+                    "resource_attributes": {
+                        "risk_policies_enabled": True
+                    },
+                    "evidence": {
+                        "policies_evaluated": len(policies)
+                    }
+                })
     except Exception as e:
         print(f"       [!] Warning: Exception in entra_risk_policies_active check: {e}")
 

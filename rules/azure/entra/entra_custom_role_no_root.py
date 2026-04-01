@@ -47,6 +47,29 @@ def run_check(credential, subscription_id=None, **kwargs):
                                     "allowed_actions": allowed
                                 }
                             })
+                        else:
+                            findings.append({
+                                "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                                "rule_id": "CIS-Azure-1.16",
+                                "check": "No Custom Role contains root/super-admin broad privileges",
+                                "severity": "High",
+                                "status": "PASS",
+                                "cloud_provider": "azure",
+                                "category": "Identity",
+                                "resource_type": "azure_entra_role",
+                                "resource_id": role.get('id', 'unknown'),
+                                "region": "global",
+                                "description": f"Custom role '{role.get('displayName')}' does not contain root level permissions.",
+                                "remediation": "No action required.",
+                                "references": ["https://learn.microsoft.com/en-us/azure/active-directory/roles/custom-overview"],
+                                "resource_attributes": {
+                                    "role_name": role.get('displayName'),
+                                    "is_built_in": False
+                                },
+                                "evidence": {
+                                    "allowed_actions": allowed
+                                }
+                            })
     except Exception as e:
         print(f"       [!] Warning: Exception in entra_custom_role_no_root check: {e}")
 

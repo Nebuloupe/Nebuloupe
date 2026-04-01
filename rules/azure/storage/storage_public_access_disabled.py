@@ -42,6 +42,28 @@ def run_check(credential):
                                 "allow_blob_public_access": True
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-3.6",
+                            "check": "Storage Account Allows Public Access",
+                            "severity": "High",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Storage",
+                            "resource_type": "Microsoft.Storage/storageAccounts",
+                            "resource_id": account.id,
+                            "region": account.location,
+                            "description": f"Storage account '{account.name}' does not permit public access to blob containers.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/storage/blobs/anonymous-read-access-prevent"],
+                            "resource_attributes": {
+                                "allow_blob_public_access": False
+                            },
+                            "evidence": {
+                                "allow_blob_public_access": False
+                            }
+                        })
                     
                     # 2. Extract resource group from the account ID to check individual containers
                     # ID format: /subscriptions/.../resourceGroups/<rg_name>/providers/Microsoft.Storage/storageAccounts/...

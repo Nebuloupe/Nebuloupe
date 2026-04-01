@@ -49,6 +49,28 @@ def run_check(credential, subscription_id=None, **kwargs):
                             "directory_sync_enabled": sync_enabled
                         }
                     })
+                else:
+                    findings.append({
+                        "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                        "rule_id": "CIS-Azure-1.X",
+                        "check": "Verify On-Premises Directory Synchronization/Password Sync",
+                        "severity": "Low",
+                        "status": "PASS",
+                        "cloud_provider": "azure",
+                        "category": "Identity",
+                        "resource_type": "azure_entra_tenant",
+                        "resource_id": "tenant",
+                        "region": "global",
+                        "description": "On-premises synchronization is enabled.",
+                        "remediation": "No action required.",
+                        "references": ["https://learn.microsoft.com/en-us/azure/active-directory/hybrid/whatis-phs"],
+                        "resource_attributes": {
+                            "on_premises_sync_enabled": True
+                        },
+                        "evidence": {
+                            "directory_sync_enabled": sync_enabled
+                        }
+                    })
                     
     except Exception as e:
         print(f"       [!] Warning: Exception in entra_password_hash_sync check: {e}")

@@ -57,6 +57,28 @@ def run_check(credential, subscription_id=None, **kwargs):
                         "policies_found": len(policies)
                     }
                 })
+            else:
+                findings.append({
+                    "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                    "rule_id": "CIS-Azure-1.1",
+                    "check": "MFA should be enabled for all privileged accounts",
+                    "severity": "Critical",
+                    "status": "PASS",
+                    "cloud_provider": "azure",
+                    "category": "Identity",
+                    "resource_type": "azure_entra_tenant",
+                    "resource_id": "tenant",
+                    "region": "global",
+                    "description": "An active Conditional Access policy enforces MFA for administrators/roles.",
+                    "remediation": "No action required.",
+                    "references": ["https://learn.microsoft.com/en-us/azure/active-directory/conditional-access/howto-conditional-access-policy-admin-mfa"],
+                    "resource_attributes": {
+                        "mfa_enforced_for_admins": True
+                    },
+                    "evidence": {
+                        "policies_found": len(policies)
+                    }
+                })
         else:
             print(f"       [!] Warning: Graph API error extracting Admin MFA: {response.text}")
             
