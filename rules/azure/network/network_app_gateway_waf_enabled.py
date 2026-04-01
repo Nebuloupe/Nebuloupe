@@ -50,6 +50,30 @@ def run_check(credential):
                                 "sku_name": str(appgw.sku.name) if getattr(appgw, 'sku', None) else "Unknown"
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-6.X", # Custom / WAF Rule
+                            "check": "Application Gateway WAF is not Enabled in Prevention Mode",
+                            "severity": "High",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Network",
+                            "resource_type": "Microsoft.Network/applicationGateways",
+                            "resource_id": appgw.id,
+                            "region": appgw.location,
+                            "description": f"Application Gateway '{appgw.name}' has WAF enabled in 'Prevention' mode.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/web-application-firewall/ag/ag-overview"],
+                            "resource_attributes": {
+                                "waf_enabled": waf_enabled,
+                                "waf_mode": str(waf_mode)
+                            },
+                            "evidence": {
+                                "app_gateway_name": appgw.name,
+                                "sku_name": str(appgw.sku.name) if getattr(appgw, 'sku', None) else "Unknown"
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze WAF for App Gateway {appgw.name}: {e}")
                     

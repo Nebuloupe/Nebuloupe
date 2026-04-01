@@ -48,6 +48,29 @@ def run_check(credential):
                                     "remote_virtual_network": peering.remote_virtual_network.id if getattr(peering, 'remote_virtual_network', None) else "unknown"
                                 }
                             })
+                        else:
+                            findings.append({
+                                "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                "rule_id": "CIS-AZURE-6.X",
+                                "check": "VNet Peering allows forwarded traffic",
+                                "severity": "Low", # Informational/Low complexity
+                                "status": "PASS",
+                                "cloud_provider": "azure",
+                                "category": "Network",
+                                "resource_type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                                "resource_id": peering.id,
+                                "region": vnet.location,
+                                "description": f"VNet peering '{peering.name}' on VNet '{vnet.name}' does not allow forwarded traffic.",
+                                "remediation": "No action required.",
+                                "references": ["https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-peering-overview"],
+                                "resource_attributes": {
+                                    "peering_name": peering.name,
+                                    "allow_forwarded_traffic": False
+                                },
+                                "evidence": {
+                                    "remote_virtual_network": peering.remote_virtual_network.id if getattr(peering, 'remote_virtual_network', None) else "unknown"
+                                }
+                            })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze VNet peerings for {vnet.name}: {e}")
                     

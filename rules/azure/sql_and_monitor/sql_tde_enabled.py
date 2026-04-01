@@ -45,6 +45,30 @@ def run_check(credential):
                                 "tde_state": tde.state
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-4.1.1",
+                            "check": "SQL Transparent Data Encryption (TDE) Not Enabled",
+                            "severity": "High",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "SQL",
+                            "resource_type": "Microsoft.Sql/servers/databases",
+                            "resource_id": db.id,
+                            "region": db.location,
+                            "description": f"SQL Database '{db.name}' on server '{server.name}' has Transparent Data Encryption (TDE) enabled.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/transparent-data-encryption-tde-overview"],
+                            "resource_attributes": {
+                                "server_name": server.name,
+                                "database_name": db.name,
+                                "tde_state": tde.state
+                            },
+                            "evidence": {
+                                "tde_state": tde.state
+                            }
+                        })
                 except Exception as e:
                     pass
     except Exception as e:

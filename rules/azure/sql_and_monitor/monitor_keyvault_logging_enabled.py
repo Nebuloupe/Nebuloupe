@@ -50,6 +50,29 @@ def run_check(credential):
                             "logs_enabled": False
                         }
                     })
+                else:
+                    findings.append({
+                        "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                        "rule_id": "CIS-AZURE-5.1.7",
+                        "check": "Key Vault Logging Not Enabled",
+                        "severity": "Medium",
+                        "status": "PASS",
+                        "cloud_provider": "azure",
+                        "category": "Key Vault",
+                        "resource_type": "Microsoft.KeyVault/vaults",
+                        "resource_id": vault.id,
+                        "region": vault.location,
+                        "description": f"Key Vault '{vault.name}' has AuditEvent diagnostic logs enabled.",
+                        "remediation": "No action required.",
+                        "references": ["https://learn.microsoft.com/en-us/azure/key-vault/general/logging"],
+                        "resource_attributes": {
+                            "vault_name": vault.name,
+                            "logs_enabled": True
+                        },
+                        "evidence": {
+                            "logs_enabled": True
+                        }
+                    })
         except Exception as e:
             pass
     except Exception as e:

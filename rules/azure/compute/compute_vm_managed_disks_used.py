@@ -48,6 +48,29 @@ def run_check(credential):
                                 "uses_managed_disks": False
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-7.6",
+                            "check": "VM Not Using Managed Disks",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Compute",
+                            "resource_type": "Microsoft.Compute/virtualMachines",
+                            "resource_id": vm.id,
+                            "region": vm.location,
+                            "description": f"Virtual Machine '{vm.name}' is using managed disks.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/virtual-machines/windows/convert-unmanaged-to-managed-disks"],
+                            "resource_attributes": {
+                                "vm_name": vm.name,
+                                "uses_managed_disks": True
+                            },
+                            "evidence": {
+                                "uses_managed_disks": True
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze storage profile for VM {vm.name}: {e}")
                     

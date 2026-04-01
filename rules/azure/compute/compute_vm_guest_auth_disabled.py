@@ -47,6 +47,29 @@ def run_check(credential):
                                     "disable_password_authentication": False
                                 }
                             })
+                        else:
+                            findings.append({
+                                "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                "rule_id": "CIS-AZURE-7.1", 
+                                "check": "Linux VM Password Authentication Enabled",
+                                "severity": "Medium",
+                                "status": "PASS",
+                                "cloud_provider": "azure",
+                                "category": "Compute",
+                                "resource_type": "Microsoft.Compute/virtualMachines",
+                                "resource_id": vm.id,
+                                "region": vm.location,
+                                "description": f"Linux Virtual Machine '{vm.name}' has password authentication disabled.",
+                                "remediation": "No action required.",
+                                "references": ["https://learn.microsoft.com/en-us/azure/virtual-machines/linux/mac-create-ssh-keys"],
+                                "resource_attributes": {
+                                    "vm_name": vm.name,
+                                    "disable_password_authentication": True
+                                },
+                                "evidence": {
+                                    "disable_password_authentication": True
+                                }
+                            })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze linux config for VM {vm.name}: {e}")
                     

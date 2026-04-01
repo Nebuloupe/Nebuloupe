@@ -41,6 +41,29 @@ def run_check(credential):
                         "defender_for_sql": "Free/Off"
                     }
                 })
+            else:
+                findings.append({
+                    "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                    "rule_id": "CIS-AZURE-2.2",
+                    "check": "Defender for SQL Not Enabled",
+                    "severity": "Medium",
+                    "status": "PASS",
+                    "cloud_provider": "azure",
+                    "category": "Monitor",
+                    "resource_type": "Microsoft.Security/pricings",
+                    "resource_id": f"/subscriptions/{sub_id}/providers/Microsoft.Security/pricings/SqlServers",
+                    "region": "global",
+                    "description": f"Subscription '{sub_id}' has Microsoft Defender for SQL enabled.",
+                    "remediation": "No action required.",
+                    "references": ["https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-sql-introduction"],
+                    "resource_attributes": {
+                        "subscription_id": sub_id,
+                        "defender_for_sql": "Standard"
+                    },
+                    "evidence": {
+                        "defender_for_sql": "Standard"
+                    }
+                })
         except Exception as e:
             pass
     except Exception as e:

@@ -47,6 +47,28 @@ def run_check(credential):
                                 "require_infrastructure_encryption": bool(infrastructure_encryption)
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-3.2", # Custom / Extra Security
+                            "check": "Storage Account Infrastructure Encryption Not Enabled",
+                            "severity": "Low",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Storage",
+                            "resource_type": "Microsoft.Storage/storageAccounts",
+                            "resource_id": account.id,
+                            "region": account.location,
+                            "description": f"Storage account '{account.name}' has Infrastructure Encryption (Double Encryption) enabled.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/storage/common/infrastructure-encryption-enable"],
+                            "resource_attributes": {
+                                "require_infrastructure_encryption": bool(infrastructure_encryption)
+                            },
+                            "evidence": {
+                                "require_infrastructure_encryption": bool(infrastructure_encryption)
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze infrastructure encryption for {account.name}: {e}")
                     

@@ -42,6 +42,28 @@ def run_check(credential, subscription_id=None, **kwargs):
                         "total_policies_found": len(policies)
                     }
                 })
+            else:
+                findings.append({
+                    "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                    "rule_id": "CIS-Azure-1.1",
+                    "check": "Conditional Access Policies Enabled",
+                    "severity": "Critical",
+                    "status": "PASS",
+                    "cloud_provider": "azure",
+                    "category": "Identity",
+                    "resource_type": "azure_entra_tenant",
+                    "resource_id": "tenant",
+                    "region": "global",
+                    "description": f"Tenant has {len(active_policies)} active Conditional Access policies.",
+                    "remediation": "No action required.",
+                    "references": ["https://learn.microsoft.com/en-us/azure/active-directory/conditional-access/overview"],
+                    "resource_attributes": {
+                        "active_policies_count": len(active_policies)
+                    },
+                    "evidence": {
+                        "total_policies_found": len(policies)
+                    }
+                })
     except Exception as e:
         print(f"       [!] Warning: Exception in entra_conditional_access_enabled check: {e}")
 

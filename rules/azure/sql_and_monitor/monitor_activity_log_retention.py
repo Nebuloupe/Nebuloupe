@@ -42,6 +42,31 @@ def run_check(credential):
                             "retention_enabled": enabled
                         }
                     })
+                else:
+                    findings.append({
+                        "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                        "rule_id": "CIS-AZURE-5.1",
+                        "check": "Activity Log Retention Is Less Than 365 Days",
+                        "severity": "Medium",
+                        "status": "PASS",
+                        "cloud_provider": "azure",
+                        "category": "Monitor",
+                        "resource_type": "Microsoft.Insights/logprofiles",
+                        "resource_id": profile.id,
+                        "region": profile.location,
+                        "description": f"Log profile '{profile.name}' has activity log retention of {days} days. (Should be 365+ or 0)",
+                        "remediation": "No action required.",
+                        "references": ["https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log"],
+                        "resource_attributes": {
+                            "profile_name": profile.name,
+                            "retention_days": days,
+                            "retention_enabled": enabled
+                        },
+                        "evidence": {
+                            "retention_days": days,
+                            "retention_enabled": enabled
+                        }
+                    })
         except Exception as e:
             pass
     except Exception as e:

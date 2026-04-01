@@ -41,6 +41,29 @@ def run_check(credential):
                         "defender_for_servers": "Free/Off"
                     }
                 })
+            else:
+                findings.append({
+                    "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                    "rule_id": "CIS-AZURE-2.1",
+                    "check": "Defender for Cloud Not Enabled for Servers",
+                    "severity": "Medium",
+                    "status": "PASS",
+                    "cloud_provider": "azure",
+                    "category": "Monitor",
+                    "resource_type": "Microsoft.Security/pricings",
+                    "resource_id": f"/subscriptions/{sub_id}/providers/Microsoft.Security/pricings/VirtualMachines",
+                    "region": "global",
+                    "description": f"Subscription '{sub_id}' has Microsoft Defender for Cloud (Standard pricing tier) enabled for Virtual Machines.",
+                    "remediation": "No action required.",
+                    "references": ["https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-servers-introduction"],
+                    "resource_attributes": {
+                        "subscription_id": sub_id,
+                        "defender_for_servers": "Standard"
+                    },
+                    "evidence": {
+                        "defender_for_servers": "Standard"
+                    }
+                })
         except Exception as e:
             pass
     except Exception as e:

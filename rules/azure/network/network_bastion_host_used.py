@@ -49,6 +49,29 @@ def run_check(credential):
                                 "subnet_names": [s.name for s in subnets]
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-6.X",
+                            "check": "Azure Bastion Host is not deployed in Virtual Network",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Network",
+                            "resource_type": "Microsoft.Network/virtualNetworks",
+                            "resource_id": vnet.id,
+                            "region": vnet.location,
+                            "description": f"Virtual Network '{vnet.name}' contains an 'AzureBastionSubnet', indicating a Bastion host is deployed for secure remote access.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/bastion/bastion-overview"],
+                            "resource_attributes": {
+                                "vnet_name": vnet.name,
+                                "has_bastion_subnet": True
+                            },
+                            "evidence": {
+                                "subnet_names": [s.name for s in subnets]
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze Bastion subnets for VNet {vnet.name}: {e}")
                     

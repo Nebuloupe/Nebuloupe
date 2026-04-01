@@ -50,6 +50,26 @@ def run_check(credential, subscription_id=None, **kwargs):
                                 "guest_users": [g.get('userPrincipalName') for g in guests]
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZURE-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-Azure-1.4",
+                            "check": "No Guest Users have Global Administrator role",
+                            "severity": "High",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Identity",
+                            "resource_type": "azure_entra_tenant",
+                            "resource_id": "tenant",
+                            "region": "global",
+                            "description": "No guest users have Global Administrator privileges.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions"],
+                            "resource_attributes": {
+                                "guest_global_admins": len(guests)
+                            },
+                            "evidence": {}
+                        })
     except Exception as e:
         print(f"       [!] Warning: Exception in entra_no_guest_owners check: {e}")
 

@@ -62,6 +62,31 @@ def run_check(credential):
                                 "auto_update_enabled": False
                             }
                         })
+                    elif os_profile:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-7.4",
+                            "check": "VM OS Automatic Updates Disabled",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Compute",
+                            "resource_type": "Microsoft.Compute/virtualMachines",
+                            "resource_id": vm.id,
+                            "region": vm.location,
+                            "description": f"{os_type} Virtual Machine '{vm.name}' has automatic OS updates enabled.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/virtual-machines/automatic-vm-guest-patching"],
+                            "resource_attributes": {
+                                "vm_name": vm.name,
+                                "os_type": os_type,
+                                "auto_update_enabled": True
+                            },
+                            "evidence": {
+                                "os_profile_configured": True,
+                                "auto_update_enabled": True
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze OS updates for VM {vm.name}: {e}")
                     

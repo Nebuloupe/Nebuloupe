@@ -44,6 +44,28 @@ def run_check(credential):
                                 "has_private_endpoint_connections": has_private_endpoints
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-3.11",
+                            "check": "Storage Account does not use Private Endpoints",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Storage",
+                            "resource_type": "Microsoft.Storage/storageAccounts",
+                            "resource_id": account.id,
+                            "region": account.location,
+                            "description": f"Storage account '{account.name}' is configured to use Private Endpoints.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/storage/common/storage-private-endpoints"],
+                            "resource_attributes": {
+                                "has_private_endpoint_connections": has_private_endpoints
+                            },
+                            "evidence": {
+                                "has_private_endpoint_connections": has_private_endpoints
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze private endpoints for {account.name}: {e}")
                     

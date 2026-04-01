@@ -42,6 +42,28 @@ def run_check(credential):
                                 "minimum_tls_version": str(min_tls)
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-3.1", # Related to Secure Transfer
+                            "check": "Storage Account Minimum TLS Version is below 1.2",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Storage",
+                            "resource_type": "Microsoft.Storage/storageAccounts",
+                            "resource_id": account.id,
+                            "region": account.location,
+                            "description": f"Storage account '{account.name}' has minimum TLS version correctly set to at least TLS1_2.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version"],
+                            "resource_attributes": {
+                                "minimum_tls_version": str(min_tls)
+                            },
+                            "evidence": {
+                                "minimum_tls_version": str(min_tls)
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze TLS for storage account {account.name}: {e}")
                     
