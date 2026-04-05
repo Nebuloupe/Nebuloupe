@@ -1,6 +1,6 @@
 import streamlit as st
 
-from dashboard.pdf_export import generate_pdf_report
+from dashboard.pdf import generate_pdf_report
 from dashboard.visuals import build_findings_rows_html, build_severity_pie
 
 SEV_ORDER = ["Critical", "High", "Medium", "Low"]
@@ -14,7 +14,13 @@ def page_dashboard():
 
     severity_counts = summary["severity_counts"]
     scope_str = meta["cloud_scope"].upper()
-    dur_str = f"{meta['scan_duration_seconds']}s"
+    dur_raw = meta.get("scan_duration_seconds", 0)
+    if dur_raw == 0:
+        dur_str = "< 1s"
+    elif dur_raw < 1:
+        dur_str = f"{dur_raw:.2f}s"
+    else:
+        dur_str = f"{dur_raw:.1f}s"
     ts = meta["scan_started_at"][:19].replace("T", " ") + " UTC"
 
     col_left, col_right = st.columns([3, 1])
@@ -34,10 +40,17 @@ def page_dashboard():
     with col_right:
         st.markdown(
             f"""
-        <div class="nb-dash-meta" style="padding:20px 8px 0 0;text-align:right;">
-          Scope: <span>{scope_str}</span>&nbsp;&nbsp;·&nbsp;&nbsp;
-          Duration: <span>{dur_str}</span><br>
-          <span style="font-size:10px;">{ts}</span>
+        <div class="nb-dash-meta" style="padding:20px 8px 0 0;">
+          <div class="nb-meta-row">
+            <span class="nb-meta-label">Scope</span>
+            <span class="nb-meta-sep">·</span>
+            <span class="nb-meta-value">{scope_str}</span>
+            <span class="nb-meta-sep" style="margin:0 4px;">|</span>
+            <span class="nb-meta-label">Duration</span>
+            <span class="nb-meta-sep">·</span>
+            <span class="nb-meta-value">{dur_str}</span>
+          </div>
+          <div class="nb-meta-ts">{ts}</div>
         </div>
         """,
             unsafe_allow_html=True,

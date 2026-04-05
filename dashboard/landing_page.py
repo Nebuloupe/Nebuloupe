@@ -11,12 +11,14 @@ import importlib
 import streamlit as st
 from datetime import datetime, timezone
 
+from dashboard.icons import get_svg_icon
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 CLOUD_META = {
-    "aws":   {"icon": "🟠", "label": "Amazon Web Services"},
-    "azure": {"icon": "🔵", "label": "Microsoft Azure"},
-    "gcp":   {"icon": "🟢", "label": "Google Cloud"},
+    "aws":   {"label": "Amazon Web Services", "icon": get_svg_icon("aws")},
+    "azure": {"label": "Microsoft Azure",     "icon": get_svg_icon("azure")},
+    "gcp":   {"label": "Google Cloud",        "icon": get_svg_icon("gcp")},
 }
 
 
@@ -61,6 +63,15 @@ def _run_scan():
             auth_ctx = get_azure_credentials()
 
         findings, errors = [], []
+        scan_start_time = time.time()
+
+        # Resolve real account ID
+        real_account = "N/A"
+        if cloud == "aws" and auth_ctx:
+            try:
+                real_account = auth_ctx.client("sts").get_caller_identity().get("Account", "N/A")
+            except Exception:
+                pass
 
         for idx, (display_name, mod_path) in enumerate(rule_modules):
             status_text.markdown(
@@ -112,22 +123,27 @@ def _run_scan():
             if pk in risk_by_cloud:
                 risk_by_cloud[pk] += s
 
+        scan_end_time      = time.time()
+        scan_duration      = round(scan_end_time - scan_start_time, 2)
+        scan_started_iso   = datetime.fromtimestamp(scan_start_time, tz=timezone.utc).isoformat()
+        scan_completed_iso = datetime.fromtimestamp(scan_end_time,   tz=timezone.utc).isoformat()
+
         report = {
             "scan_metadata": {
-                "scan_id": str(uuid.uuid4()),
-                "scan_started_at": datetime.now(timezone.utc).isoformat(),
-                "scan_completed_at": datetime.now(timezone.utc).isoformat(),
-                "scan_duration_seconds": 0,
-                "cloud_scope": cloud,
-                "target_account": "demo-account-001",
-                "status": "partial" if errors else "success",
-                "errors": errors,
+                "scan_id":               str(uuid.uuid4()),
+                "scan_started_at":       scan_started_iso,
+                "scan_completed_at":     scan_completed_iso,
+                "scan_duration_seconds": scan_duration,
+                "cloud_scope":           cloud,
+                "target_account":        real_account,
+                "status":                "partial" if errors else "success",
+                "errors":                errors,
             },
             "summary": {
-                "total_findings": len(findings),
-                "severity_counts": sev_counts,
+                "total_findings":       len(findings),
+                "severity_counts":      sev_counts,
                 "severity_score_total": score_total,
-                "risk_score_by_cloud": risk_by_cloud,
+                "risk_score_by_cloud":  risk_by_cloud,
             },
             "findings": findings,
         }
@@ -139,9 +155,9 @@ def _run_scan():
 
         time.sleep(0.5)
 
-    st.session_state.results = report
+    st.session_state.results  = report
     st.session_state.scanning = False
-    st.session_state.page = "dashboard"
+    st.session_state.page     = "dashboard"
     st.rerun()
 
 
@@ -175,7 +191,9 @@ def page_landing():
                 sel  = "selected" if cloud in st.session_state.selected_clouds else ""
                 st.markdown(f"""
                 <div class="nb-cloud-btn {sel}" style="pointer-events:none;">
-                  <span class="nb-cloud-icon">{meta['icon']}</span>{cloud.upper()}
+                  <div class="nb-cloud-icon">{meta['icon']}</div>
+                  <span class="nb-cloud-name">{cloud.upper()}</span>
+                  <span class="nb-cloud-label">{meta['label']}</span>
                 </div>""", unsafe_allow_html=True)
                 if st.button(cloud.upper(), key=f"btn_{cloud}",
                              use_container_width=True, disabled=is_scanning):
