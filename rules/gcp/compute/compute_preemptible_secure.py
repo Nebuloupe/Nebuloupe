@@ -12,7 +12,7 @@ def run_check(project_id: str):
     findings = []
 
     try:
-        service = build("compute", "v1")
+        service = build("compute", "v1", cache_discovery=False)
         agg = service.instances().aggregatedList(project=project_id).execute()
         items = agg.get("items", {})
     except Exception as e:

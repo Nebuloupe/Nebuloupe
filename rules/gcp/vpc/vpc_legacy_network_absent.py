@@ -3,7 +3,7 @@ import uuid
 def run_check(project_id: str):
     from googleapiclient import discovery
 
-    compute = discovery.build('compute', 'v1')
+    compute = discovery.build('compute', 'v1', cache_discovery=False)
     findings = []
 
     networks = compute.networks().list(project=project_id).execute()

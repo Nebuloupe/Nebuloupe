@@ -22,7 +22,7 @@ def run_check(project_id: str):
     findings = []
 
     try:
-        service = build("compute", "v1")
+        service = build("compute", "v1", cache_discovery=False)
         agg_disks = service.disks().aggregatedList(project=project_id).execute()
     except Exception as e:
         return [create_finding(

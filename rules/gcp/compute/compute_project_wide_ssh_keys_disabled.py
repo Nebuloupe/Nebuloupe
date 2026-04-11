@@ -6,7 +6,7 @@ def run_check(project_id: str):
     findings = []
 
     try:
-        service = build("compute", "v1")
+        service = build("compute", "v1", cache_discovery=False)
 
         # Check whether any project-wide SSH keys exist
         project_meta = service.projects().get(project=project_id).execute()

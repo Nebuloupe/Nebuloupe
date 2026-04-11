@@ -1,4 +1,4 @@
-from engine.auth import get_aws_session, get_azure_credentials
+from engine.auth import get_aws_session, get_azure_credentials, get_gcp_project
 from engine.core_loop import start_scan, start_iac_scan
 import logging
 
@@ -71,21 +71,28 @@ def run_scanner(cloud_scope, mode="api", tf_path=None, fail_on_severities=None):
         
         aws_session = None
         azure_credential = None
+        gcp_project = None
 
         if cloud_scope == "aws":
             aws_session = get_aws_session()
             if not aws_session:
                 logging.warning("Could not obtain AWS session.")
-                
+
         if cloud_scope == "azure":
             azure_credential = get_azure_credentials()
             if not azure_credential:
                 logging.warning("Could not obtain Azure credentials.")
-        
-        if aws_session or azure_credential:
+                
+        if cloud_scope == "gcp":
+            gcp_project = get_gcp_project()
+            if not gcp_project:
+                logging.warning("Could not obtain GCP Project ID.")
+
+        if aws_session or azure_credential or gcp_project:
             api_report = start_scan(
                 aws_session=aws_session,
                 azure_credential=azure_credential,
+                gcp_project=gcp_project,
                 cloud_scope=cloud_scope
             )
         else:

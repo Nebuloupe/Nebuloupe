@@ -3,7 +3,7 @@ import uuid
 def run_check(project_id: str):
     from googleapiclient import discovery
 
-    logging_svc = discovery.build('logging', 'v2')
+    logging_svc = discovery.build('logging', 'v2', cache_discovery=False)
     findings = []
 
     buckets_resp = logging_svc.projects().locations().buckets().list(

@@ -36,7 +36,7 @@ def run_check(project_id: str):
 
         # Check if any GCE instances use the default compute SA
         try:
-            compute = build("compute", "v1")
+            compute = build("compute", "v1", cache_discovery=False)
             agg_list = compute.instances().aggregatedList(project=project_id).execute()
             for zone_data in agg_list.get("items", {}).values():
                 for instance in zone_data.get("instances", []):

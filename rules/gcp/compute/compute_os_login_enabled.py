@@ -6,7 +6,7 @@ def run_check(project_id: str):
     findings = []
 
     try:
-        service = build("compute", "v1")
+        service = build("compute", "v1", cache_discovery=False)
 
         # Check project-level OS Login metadata
         project_meta = service.projects().get(project=project_id).execute()
