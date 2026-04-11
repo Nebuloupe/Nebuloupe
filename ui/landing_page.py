@@ -31,6 +31,15 @@ _cloud_selector_component = components.declare_component(
 )
 
 
+@st.dialog("Credentials Not Found")
+def _show_auth_error_popup(message: str):
+    st.error("Authentication failed for the selected cloud provider.")
+    st.code(message, language="text")
+    if st.button("Close", key="auth_error_close", width="stretch"):
+        st.session_state.auth_error_popup = None
+        st.rerun()
+
+
 def _render_cloud_selector(selected, disabled=False):
     clouds = [
         {
@@ -69,7 +78,7 @@ def _count_rule_files(cloud: str) -> list:
 
 def _run_scan():
     """Run scan file-by-file, updating progress bar after each rule completes."""
-    from engine.auth import get_aws_session, get_azure_credentials, get_gcp_project
+    from engine.auth import AuthError, get_aws_session, get_azure_credentials, get_gcp_project
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _render_progress(progress_slot, pct):
@@ -100,12 +109,21 @@ def _run_scan():
         status_text  = st.empty()
 
         auth_ctx = None
-        if cloud == "aws":
-            auth_ctx = get_aws_session()
-        elif cloud == "azure":
-            auth_ctx = get_azure_credentials()
-        elif cloud == "gcp":
-            auth_ctx = get_gcp_project()
+        try:
+            if cloud == "aws":
+                auth_ctx = get_aws_session()
+            elif cloud == "azure":
+                auth_ctx = get_azure_credentials()
+            elif cloud == "gcp":
+                auth_ctx = get_gcp_project()
+        except AuthError as e:
+            st.session_state.scanning = False
+            st.session_state.auth_error_popup = str(e)
+            st.rerun()
+        except Exception as e:
+            st.session_state.scanning = False
+            st.session_state.auth_error_popup = f"[!] Authentication failed: {e}"
+            st.rerun()
 
         findings, errors = [], []
         scan_start_time  = time.time()
@@ -227,6 +245,11 @@ def page_landing():
         st.session_state.selected_clouds = []
     if "scanning" not in st.session_state:
         st.session_state.scanning = False
+    if "auth_error_popup" not in st.session_state:
+        st.session_state.auth_error_popup = None
+
+    if st.session_state.auth_error_popup:
+        _show_auth_error_popup(st.session_state.auth_error_popup)
 
     is_scanning = st.session_state.scanning
     selected    = st.session_state.selected_clouds[0] if st.session_state.selected_clouds else ""

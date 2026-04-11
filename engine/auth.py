@@ -1,4 +1,3 @@
-import sys
 import boto3
 import logging
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
@@ -27,6 +26,16 @@ except ImportError:
     ClientAuthenticationError = Exception
 
 
+class AuthError(Exception):
+    """Raised when cloud authentication fails with user-actionable guidance."""
+
+
+def _raise_auth_error(lines):
+    message = "\n".join(lines)
+    print(message)
+    raise AuthError(message)
+
+
 def get_aws_session(region="us-east-1"):
     """
     Authenticate with AWS using default credential resolution chain:
@@ -40,15 +49,20 @@ def get_aws_session(region="us-east-1"):
         return session
 
     except (NoCredentialsError, PartialCredentialsError) as e:
-        print("\n[!] AWS Authentication Failed")
-        print("    No valid AWS credentials could be found.")
-        print("\n    Please authenticate using one of the following methods:")
-        print("    1. CI/CD Environment: Set AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY")
-        print("    2. Local Development: Run 'aws configure'")
-        sys.exit(1)
+        _raise_auth_error([
+            "",
+            "[!] AWS Authentication Failed",
+            "    No valid AWS credentials could be found.",
+            "",
+            "    Please authenticate using one of the following methods:",
+            "    1. CI/CD Environment: Set AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY",
+            "    2. Local Development: Run 'aws configure'",
+        ])
     except Exception as e:
-        print(f"\n[!] Unexpected AWS authentication error: {e}")
-        sys.exit(1)
+        _raise_auth_error([
+            "",
+            f"[!] Unexpected AWS authentication error: {e}",
+        ])
 
 
 def get_azure_credentials():
@@ -60,8 +74,9 @@ def get_azure_credentials():
     Browser login completely disabled.
     """
     if DefaultAzureCredential is None:
-        print("[-] Azure identity library (azure-identity) not installed.")
-        sys.exit(1)
+        _raise_auth_error([
+            "[-] Azure identity library (azure-identity) not installed.",
+        ])
 
     try:
         # Exclude browser, exclude GUI prompts to ensure headless execution
@@ -75,23 +90,31 @@ def get_azure_credentials():
         return credential
 
     except (CredentialUnavailableError, ClientAuthenticationError) as e:
-        print("\n[!] Azure Authentication Failed")
-        print("    No valid Azure credentials could be found.")
-        print("\n    Please authenticate using one of the following methods:")
-        print("    1. CI/CD Environment: Set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, & AZURE_TENANT_ID")
-        print("    2. Local Development: Run 'az login'")
-        sys.exit(1)
+        _raise_auth_error([
+            "",
+            "[!] Azure Authentication Failed",
+            "    No valid Azure credentials could be found.",
+            "",
+            "    Please authenticate using one of the following methods:",
+            "    1. CI/CD Environment: Set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, & AZURE_TENANT_ID",
+            "    2. Local Development: Run 'az login'",
+        ])
     except Exception as e:
         if "CredentialUnavailableError" in str(type(e)):
-            print("\n[!] Azure Authentication Failed")
-            print("    No valid Azure credentials could be found.")
-            print("\n    Please authenticate using one of the following methods:")
-            print("    1. CI/CD Environment: Set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, & AZURE_TENANT_ID")
-            print("    2. Local Development: Run 'az login'")
-            sys.exit(1)
+            _raise_auth_error([
+                "",
+                "[!] Azure Authentication Failed",
+                "    No valid Azure credentials could be found.",
+                "",
+                "    Please authenticate using one of the following methods:",
+                "    1. CI/CD Environment: Set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, & AZURE_TENANT_ID",
+                "    2. Local Development: Run 'az login'",
+            ])
             
-        print(f"\n[!] Unexpected Azure authentication error: {e}")
-        sys.exit(1)
+        _raise_auth_error([
+            "",
+            f"[!] Unexpected Azure authentication error: {e}",
+        ])
 
 
 def get_gcp_project():
@@ -102,8 +125,9 @@ def get_gcp_project():
     then fallback to gcloud default credentials.
     """
     if google is None:
-        print("[-] Google auth library (google-auth) not installed.")
-        sys.exit(1)
+        _raise_auth_error([
+            "[-] Google auth library (google-auth) not installed.",
+        ])
 
     try:
         credentials, project = google.auth.default()
@@ -115,15 +139,20 @@ def get_gcp_project():
         return project
 
     except DefaultCredentialsError as e:
-        print("\n[!] GCP Authentication Failed")
-        print("    Could not locate Application Default Credentials (ADC).")
-        print("\n    Please authenticate using one of the following methods:")
-        print("    1. CI/CD Environment: Set GOOGLE_APPLICATION_CREDENTIALS to the JSON key path")
-        print("    2. Local Development: Run 'gcloud auth application-default login'")
-        sys.exit(1)
+        _raise_auth_error([
+            "",
+            "[!] GCP Authentication Failed",
+            "    Could not locate Application Default Credentials (ADC).",
+            "",
+            "    Please authenticate using one of the following methods:",
+            "    1. CI/CD Environment: Set GOOGLE_APPLICATION_CREDENTIALS to the JSON key path",
+            "    2. Local Development: Run 'gcloud auth application-default login'",
+        ])
     except Exception as e:
-        print(f"\n[!] Unexpected GCP authentication error: {e}")
-        sys.exit(1)
+        _raise_auth_error([
+            "",
+            f"[!] Unexpected GCP authentication error: {e}",
+        ])
 
 if __name__ == "__main__":
     pass
