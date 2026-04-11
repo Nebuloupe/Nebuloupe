@@ -1,0 +1,62 @@
+# ============================================================
+# Nebuloupe IaC Security Scanner — GitHub Actions Workflow
+# ============================================================
+# Triggers on every PR that modifies Terraform files.
+# Scans .tf files for misconfigurations BEFORE they get merged.
+# Blocks the PR if Critical or High severity issues are found.
+
+name: 🔭 Nebuloupe IaC Security Scan
+
+on:
+  pull_request:
+    paths:
+      - '**/*.tf'          # Only trigger when Terraform files change
+      - '**/*.tf.json'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.tf'
+      - '**/*.tf.json'
+  workflow_dispatch:        # Allow manual trigger from GitHub UI
+
+jobs:
+  iac-security-scan:
+    name: Terraform Misconfiguration Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Install Nebuloupe dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Run Nebuloupe IaC scan
+      #    --mode iac      → Terraform static analysis only (no cloud creds needed)
+      #    --tf-path ./    → Scan all .tf files in the repo
+      #    --fail-on       → Exit code 1 if Critical or High issues found
+      - name: 🔍 Run Nebuloupe IaC Scan
+        run: |
+          python main.py \
+            --cloud aws \
+            --mode iac \
+            --tf-path ./ \
+            --fail-on critical,high \
+            --verbose INFO
+
+      # 5. Upload results as artifact (always, even on failure)
+      - name: 📄 Upload Scan Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nebuloupe-iac-results
+          path: output/results.json
+          retention-days: 30
