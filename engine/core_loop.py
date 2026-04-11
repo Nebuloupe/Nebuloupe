@@ -163,22 +163,24 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
     return full_report
 
 
-def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
+def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_scope="aws"):
     """
     Run live cloud API rules against actual cloud infrastructure.
     This requires valid cloud credentials.
     """
-    print(f"[*] Scanning Infrastructure (Scope: {cloud_scope.upper()})...")
+    print(f"[*] Scanning Infrastructure (Scope: {cloud_scope.upper()})...")     
     scan_id = f"nl-scan-{uuid.uuid4().hex[:8]}"
     start_time = time.time()
     start_time_iso = datetime.now().isoformat()
-    
+
     target_account = "Multiple"
     if cloud_scope == "aws" and aws_session:
         try:
             target_account = aws_session.client('sts').get_caller_identity().get('Account', 'Unknown AWS')
         except Exception as e:
             print(f"Failed to get AWS account ID: {e}")
+    elif cloud_scope == "gcp" and gcp_project:
+        target_account = gcp_project
 
     # Initialize the required schema
     full_report = {
@@ -238,7 +240,18 @@ def start_scan(aws_session=None, azure_credential=None, cloud_scope="aws"):
                         rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
                         module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
                         plugins_to_run.append(("azure", module_path, azure_credential))
-                
+                        
+    if cloud_scope in ["gcp", "all"] and gcp_project:
+        gcp_rules_path = os.path.join(rules_base_path, 'gcp')
+        if os.path.exists(gcp_rules_path):
+            # Recursively find all rules
+            for root, dirs, files in os.walk(gcp_rules_path):
+                for f in files:
+                    if f.endswith('.py') and f != '__init__.py':
+                        rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
+                        module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
+                        plugins_to_run.append(("gcp", module_path, gcp_project))
+
     for provider, module_path, auth_context in plugins_to_run:
         rule_name = module_path.split('.')[-1]
         try:

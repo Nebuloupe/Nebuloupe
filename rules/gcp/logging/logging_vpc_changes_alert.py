@@ -7,8 +7,8 @@ VPC_KEYWORDS = ['compute.networks', 'SetCommonInstanceMetadata', 'compute.firewa
 def run_check(project_id: str):
     from googleapiclient import discovery
 
-    logging_svc = discovery.build('logging', 'v2')
-    monitoring = discovery.build('monitoring', 'v3')
+    logging_svc = discovery.build('logging', 'v2', cache_discovery=False)
+    monitoring = discovery.build('monitoring', 'v3', cache_discovery=False)
     findings = []
 
     # Step 1: look for a log-based metric covering VPC network changes

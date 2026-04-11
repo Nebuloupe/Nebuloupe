@@ -3,8 +3,8 @@ import uuid
 def run_check(project_id: str):
     from googleapiclient import discovery
 
-    dns = discovery.build('dns', 'v1')
-    compute = discovery.build('compute', 'v1')
+    dns = discovery.build('dns', 'v1', cache_discovery=False)
+    compute = discovery.build('compute', 'v1', cache_discovery=False)
     findings = []
 
     # Get all VPC networks

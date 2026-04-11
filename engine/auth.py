@@ -6,9 +6,16 @@ from botocore.exceptions import NoCredentialsError, PartialCredentialsError, Cli
 logging.getLogger('azure.identity').setLevel(logging.ERROR)
 logging.getLogger('azure.core').setLevel(logging.ERROR)
 
+# GCP imports
+try:
+    import google.auth
+except ImportError:
+    google = None
+
 # Azure imports
 try:
     from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential
+
     from azure.core.exceptions import ClientAuthenticationError
 except ImportError:
     DefaultAzureCredential = None
@@ -97,10 +104,36 @@ def get_azure_credentials():
             print(f"\n[-] Failed to authenticate with Azure: {ex}")
             return None
 
+def get_gcp_project():
+    """
+    Attempts to get the GCP Project ID.
+    1. Checks Application Default Credentials (ADC).
+    2. If not found, prompts the user.
+    """
+    # Check if google module is available globally
+    if "google" not in globals() or google is None:
+        print("[-] Google auth libraries not installed.")
+        # Fallback to prompt if google library isn't there
+        project = input("\n    Enter Google Cloud Project ID: ").strip()
+        return project if project else None
+
+    print("\n[*] Attempting to determine GCP Project ID...")
+    try:
+        credentials, project = google.auth.default()
+        if project:
+            print(f"[+] Found GCP Project via ADC: {project}")
+            return project
+    except Exception as e:
+        print(f"[-] Could not find default project via ADC: {e}")
+
+    print("[*] Please enter your project ID manually:")
+    project = input("    GCP Project ID: ").strip()
+    return project if project else None
+
 if __name__ == "__main__":
     # Test the scripts independently
     # print("Testing AWS Auth...")
     # get_aws_session()
-    
+
     print("\nTesting Azure Auth...")
-    get_azure_credentials()
+    # get_azure_credentials()

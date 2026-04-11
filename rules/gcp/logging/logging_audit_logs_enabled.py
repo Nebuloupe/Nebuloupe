@@ -3,7 +3,7 @@ import uuid
 def run_check(project_id: str):
     from googleapiclient import discovery
 
-    crm = discovery.build('cloudresourcemanager', 'v1')
+    crm = discovery.build('cloudresourcemanager', 'v1', cache_discovery=False)
     findings = []
 
     policy = crm.projects().getIamPolicy(
