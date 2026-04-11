@@ -4,6 +4,7 @@ import json
 import time
 import uuid
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -14,6 +15,9 @@ SEVERITY_SCORES = {
     "Medium": 4,
     "Low": 1
 }
+
+# Maximum parallel workers for API rule execution
+API_MAX_WORKERS = 10
 
 
 def start_iac_scan(cloud_scope="aws", tf_path="."):
@@ -163,10 +167,40 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
     return full_report
 
 
+def _run_single_api_rule(provider, module_path, auth_context):
+    """Execute a single API rule. Designed to be called from a thread pool."""
+    rule_name = module_path.split('.')[-1]
+    try:
+        module = importlib.import_module(f"rules.{module_path}")
+        print(f"   [+] Running {provider.upper()} check: {rule_name}...")
+        
+        findings = module.run_check(auth_context)
+        
+        return {
+            "provider": provider,
+            "rule_name": rule_name,
+            "findings": findings,
+            "error": None
+        }
+    except Exception as e:
+        err_msg = f"Error running {provider} rule {rule_name}: {e}"
+        print(f"   [!] {err_msg}")
+        return {
+            "provider": provider,
+            "rule_name": rule_name,
+            "findings": [],
+            "error": err_msg
+        }
+
+
 def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_scope="aws"):
     """
     Run live cloud API rules against actual cloud infrastructure.
     This requires valid cloud credentials.
+    
+    Uses ThreadPoolExecutor for parallel rule execution — each rule makes
+    independent API calls, so running them concurrently reduces total scan
+    time by overlapping network I/O wait times.
     """
     print(f"[*] Scanning Infrastructure (Scope: {cloud_scope.upper()})...")     
     scan_id = f"nl-scan-{uuid.uuid4().hex[:8]}"
@@ -251,19 +285,30 @@ def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_
                         rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
                         module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
                         plugins_to_run.append(("gcp", module_path, gcp_project))
-
-    for provider, module_path, auth_context in plugins_to_run:
-        rule_name = module_path.split('.')[-1]
-        try:
-            # 2. Dynamically import the rule module
-            module = importlib.import_module(f"rules.{module_path}")
-            print(f"   [+] Running {provider.upper()} check: {rule_name}...")
+    
+    # ── Execute API rules in PARALLEL using ThreadPoolExecutor ──
+    # Each rule makes independent cloud API calls (network I/O bound),
+    # so running them concurrently overlaps wait times for ~3-8x speedup.
+    num_workers = min(API_MAX_WORKERS, len(plugins_to_run)) if plugins_to_run else 1
+    
+    print(f"   [*] Executing {len(plugins_to_run)} rule(s) with {num_workers} parallel workers...")
+    
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        futures = {
+            executor.submit(
+                _run_single_api_rule, provider, module_path, auth_context
+            ): (provider, module_path)
+            for provider, module_path, auth_context in plugins_to_run
+        }
+        
+        for future in as_completed(futures):
+            result = future.result()
             
-            # 3. Execute the standard run_check function
-            findings = module.run_check(auth_context)
+            if result["error"]:
+                full_report["scan_metadata"]["errors"].append(result["error"])
+                full_report["scan_metadata"]["status"] = "partial"
             
-            # 4. Integrate flat findings
-            for finding in findings:
+            for finding in result["findings"]:
                 full_report["findings"].append(finding)
                 
                 # Update metrics
@@ -275,15 +320,9 @@ def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_
                 full_report["summary"]["severity_score_total"] += score
                 
                 # Only update the score for the cloud provider specified in the finding (or fallback)
-                provider_key = finding.get("cloud_provider", provider).lower()
+                provider_key = finding.get("cloud_provider", result["provider"]).lower()
                 if provider_key in full_report["summary"]["risk_score_by_cloud"]:
                     full_report["summary"]["risk_score_by_cloud"][provider_key] += score
-                    
-        except Exception as e:
-            err_msg = f"Error running {provider} rule {rule_name}: {e}"
-            print(f"   [!] {err_msg}")
-            full_report["scan_metadata"]["errors"].append(err_msg)
-            full_report["scan_metadata"]["status"] = "partial"
 
     # Finalize timestamps and durations
     end_time = time.time()
