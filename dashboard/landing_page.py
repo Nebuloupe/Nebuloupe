@@ -42,6 +42,7 @@ def _count_rule_files(cloud: str) -> list:
 def _run_scan():
     """Run scan file-by-file, updating progress bar after each rule completes."""
     from engine.auth import get_aws_session, get_azure_credentials, get_gcp_project
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     _, col, _ = st.columns([1, 2, 1])
     with col:
@@ -75,23 +76,48 @@ def _run_scan():
             except Exception:
                 pass
 
-        for idx, (display_name, mod_path) in enumerate(rule_modules):
-            status_text.markdown(
-                f'<p class="nb-scan-status">'
-                f'<span class="nb-scan-idx">[{idx+1}/{total}]</span> '
-                f'<span class="nb-scan-rule">{display_name}</span></p>',
-                unsafe_allow_html=True,
-            )
-            if auth_ctx:
-                try:
-                    module = importlib.import_module(f"rules.{mod_path}")
-                    findings.extend(module.run_check(auth_ctx))
-                except Exception as e:
-                    errors.append(str(e))
+        # Helper function to run a single rule module using the thread pool
+        def _run_module(display_name, mod_path, auth_ctx):
+            try:
+                module = importlib.import_module(f"rules.{mod_path}")
+                return display_name, module.run_check(auth_ctx), None
+            except Exception as e:
+                return display_name, [], str(e)
 
-            pct = (idx + 1) / total
-            progress_bar.progress(pct)
-            pct_text.markdown(f'<p class="nb-scan-pct">{pct * 100:.1f}%</p>', unsafe_allow_html=True)
+        completed_count = 0
+        # Use a ThreadPoolExecutor for concurrent execution
+        max_workers = min(10, total)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            if auth_ctx:
+                future_to_rule = {
+                    executor.submit(_run_module, display_name, mod_path, auth_ctx): display_name
+                    for display_name, mod_path in rule_modules
+                }
+                
+                for future in as_completed(future_to_rule):
+                    display_name, mod_findings, error = future.result()
+                    
+                    if error:
+                        errors.append(error)
+                    else:
+                        findings.extend(mod_findings)
+                        
+                    completed_count += 1
+                    status_text.markdown(
+                        f'<p class="nb-scan-status">'
+                        f'<span class="nb-scan-idx">[{completed_count}/{total}]</span> '
+                        f'<span class="nb-scan-rule">Completed {display_name}</span></p>',
+                        unsafe_allow_html=True,
+                    )
+                    
+                    pct = completed_count / total
+                    progress_bar.progress(pct)
+                    pct_text.markdown(f'<p class="nb-scan-pct">{pct * 100:.1f}%</p>', unsafe_allow_html=True)
+            else:
+                # If auth failed, just simulate completion
+                completed_count = total
+                progress_bar.progress(1.0)
+                pct_text.markdown('<p class="nb-scan-pct">100%</p>', unsafe_allow_html=True)
 
         progress_bar.progress(1.0)
         pct_text.markdown('<p class="nb-scan-pct">100%</p>', unsafe_allow_html=True)
