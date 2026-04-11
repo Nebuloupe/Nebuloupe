@@ -20,7 +20,7 @@ def run_check(project_id: str):
     findings = []
 
     try:
-        service = build("sqladmin", "v1beta4")
+        service = build("sqladmin", "v1beta4", cache_discovery=False)
         instances_list = service.instances().list(project=project_id).execute()
         instances = instances_list.get("items", [])
     except Exception as e:
