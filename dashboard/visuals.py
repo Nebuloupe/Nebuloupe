@@ -10,8 +10,8 @@ def build_severity_pie(total_findings, severity_counts, severity_order):
                 values=[severity_counts[s] for s in severity_order],
                 hole=0.6,
                 marker=dict(
-                    colors=["#f85149", "#e3703b", "#e3b341", "#3fb950"],
-                    line=dict(color="#080b10", width=4),
+                    colors=["#ef4444", "#f97316", "#eab308", "#22c55e"],
+                    line=dict(color="#030712", width=3),
                 ),
                 textinfo="none",
                 hoverinfo="label+value+percent",
@@ -20,8 +20,8 @@ def build_severity_pie(total_findings, severity_counts, severity_order):
     )
     fig.add_annotation(
         text=(
-            "<span style='font-size:32px; color:white; "
-            "font-family:\"Syne\", sans-serif; font-weight:800;'>"
+            f"<span style='font-size:30px;color:#f1f5f9;"
+            "font-family:\"Space Grotesk\",sans-serif;font-weight:800;'>"
             f"{total_findings}</span>"
         ),
         x=0.5,
@@ -29,7 +29,7 @@ def build_severity_pie(total_findings, severity_counts, severity_order):
         showarrow=False,
     )
     fig.update_layout(
-        height=200,
+        height=220,
         margin=dict(l=0, r=0, t=10, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -39,8 +39,8 @@ def build_severity_pie(total_findings, severity_counts, severity_order):
             yanchor="middle",
             y=0.5,
             xanchor="left",
-            x=0.8,
-            font=dict(color="#8b949e", size=11, family="JetBrains Mono"),
+            x=0.82,
+            font=dict(color="#475569", size=11, family="JetBrains Mono"),
         ),
     )
     return fig
@@ -60,12 +60,12 @@ def build_findings_rows_html(filtered_findings):
         rows_html += f"""<tr>
   <td><span class="nb-pill {severity}">{severity}</span></td>
   <td><span class="nb-cloud-badge {cloud}">{cloud_icon} {cloud.upper()}</span></td>
-  <td style="color:#c9d1d9;font-weight:500;">{finding.get('rule_id', 'N/A')}</td>
-  <td class="resource">{finding.get('check', 'N/A')}</td>
-  <td style="color:#58a6a6;font-size:11px;">{finding.get('resource_type', 'N/A')}</td>
-  <td style="color:#8b949e;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{finding.get('resource_id', 'N/A')}</td>
-  <td style="color:#444c56;">{finding.get('region','global')}</td>
-  <td style="color:#6e7681;max-width:300px;font-size:11px;">{description[:80]}{'…' if len(description)>80 else ''}</td>
+  <td style="color:#94a3b8;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px;">{finding.get('rule_id', 'N/A')}</td>
+  <td style="color:#cbd5e1;font-size:12px;">{finding.get('check', 'N/A')}</td>
+  <td style="color:#475569;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{finding.get('resource_id', 'N/A')}</td>
+  <td style="color:#334155;font-size:11px;">{finding.get('region','global')}</td>
+  <td style="color:#475569;font-size:11px;">{finding.get('category','N/A')}</td>
+  <td style="color:#334155;max-width:260px;font-size:11px;">{description[:80]}{'…' if len(description)>80 else ''}</td>
   <td><span class="nb-status-pill {status}">{status}</span></td>
 </tr>"""
 
