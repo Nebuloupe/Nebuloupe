@@ -8,6 +8,7 @@ import os, sys, json, time, uuid, importlib, base64
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime, timezone
+from dashboard.history_store import append_scan_history, load_scan_history
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -196,6 +197,8 @@ def _run_scan():
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as fh:
             json.dump(report, fh, indent=4)
+
+        append_scan_history(report)
         time.sleep(0.4)
 
     st.session_state.results  = report
@@ -214,6 +217,17 @@ def page_landing():
 
     is_scanning = st.session_state.scanning
     selected    = st.session_state.selected_clouds[0] if st.session_state.selected_clouds else ""
+    if "show_history_panel" not in st.session_state:
+        st.session_state.show_history_panel = False
+
+    nav_history = st.query_params.get("history")
+    if nav_history == "1":
+        st.session_state.show_history_panel = True
+        try:
+            del st.query_params["history"]
+        except Exception:
+            pass
+        st.rerun()
 
     # ── Nav ───────────────────────────────────────────────────────────────────
     st.markdown("""
@@ -222,12 +236,56 @@ def page_landing():
     <span class="nb-nav-icon">&#128301;</span>
     <span class="nb-nav-brand">NEBULOUPE</span>    <span class="nb-nav-tag">CMSS</span>
   </div>
-  <div class="nb-nav-links">
-    <span class="nb-nav-link">Docs</span>
-    <span class="nb-nav-link">GitHub</span>
-  </div>
+    <div class="nb-nav-actions">
+                <form method="get" target="_self" style="margin:0;">
+                        <input type="hidden" name="history" value="1" />
+                        <button type="submit" class="nb-nav-history">Scan History</button>
+                </form>
+    </div>
 </div>
 """, unsafe_allow_html=True)
+
+    if st.session_state.show_history_panel:
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+        top_l, top_r = st.columns([4.5, 1.2])
+        with top_l:
+            st.markdown('<div class="nb-sec-hdr">Previous Scans</div>', unsafe_allow_html=True)
+        with top_r:
+            if st.button("Close", key="close_history_panel", width="stretch"):
+                st.session_state.show_history_panel = False
+                st.rerun()
+
+        history = load_scan_history()
+        if not history:
+            st.info("No previous scans found yet. Run a scan to populate history.")
+        else:
+            for i, item in enumerate(history):
+                cloud = str(item.get("cloud_scope", "unknown")).upper()
+                findings = item.get("total_findings", 0)
+                score = item.get("severity_score_total", 0)
+                status = str(item.get("status", "unknown")).upper()
+                started = item.get("scan_started_at", "")
+
+                info_col, btn_col = st.columns([5, 1])
+                with info_col:
+                    st.markdown(
+                        f"""
+<div class=\"nb-stat-card\" style=\"margin-bottom:10px;\">
+  <div class=\"nb-stat-label\">{cloud} • {status}</div>
+  <div style=\"font-size:13px;color:#e2e8f0;\">Findings: {findings} • Risk Score: {score}</div>
+  <div style=\"font-size:11px;color:#94a3b8;margin-top:4px;\">Started: {started}</div>
+</div>
+""",
+                        unsafe_allow_html=True,
+                    )
+                with btn_col:
+                    if st.button("Open", key=f"open_hist_inline_{i}", width="stretch"):
+                        st.session_state.results = item.get("report")
+                        st.session_state.page = "dashboard"
+                        st.rerun()
+
+        # Keep history as an inline view on landing page.
+        return
 
     # ── Hero ──────────────────────────────────────────────────────────────────
     st.markdown("""

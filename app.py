@@ -2,6 +2,7 @@ import os
 import streamlit as st
 
 from dashboard.dashboard_page import page_dashboard
+from dashboard.history_page import page_history
 from dashboard.landing_page import page_landing
 
 # ─────────────────────────────────────────────
@@ -44,3 +45,5 @@ if st.session_state.page == "landing":
     page_landing()
 elif st.session_state.page == "dashboard":
     page_dashboard()
+elif st.session_state.page == "history":
+    page_history()
