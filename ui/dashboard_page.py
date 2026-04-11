@@ -1,8 +1,8 @@
 import streamlit as st
 import streamlit_shadcn_ui as ui
 
-from dashboard.pdf import generate_pdf_report
-from dashboard.visuals import build_findings_rows_html, build_severity_pie
+from ui.pdf import generate_pdf_report
+from ui.visuals import build_findings_rows_html, build_severity_pie
 
 SEV_ORDER = ["Critical", "High", "Medium", "Low"]
 

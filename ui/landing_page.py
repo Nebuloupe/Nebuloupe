@@ -8,7 +8,7 @@ import os, sys, json, time, uuid, importlib, base64
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime, timezone
-from dashboard.history_store import append_scan_history, load_scan_history
+from ui.history_store import append_scan_history, load_scan_history
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -72,6 +72,18 @@ def _run_scan():
     from engine.auth import get_aws_session, get_azure_credentials, get_gcp_project
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    def _render_progress(progress_slot, pct):
+        pct = max(0.0, min(1.0, float(pct)))
+        progress_slot.markdown(
+            (
+                '<div class="nb-shad-progress" role="progressbar" '
+                f'aria-valuemin="0" aria-valuemax="100" aria-valuenow="{pct * 100:.1f}">'
+                f'<div class="nb-shad-progress-fill" style="width:{pct * 100:.1f}%"></div>'
+                '</div>'
+            ),
+            unsafe_allow_html=True,
+        )
+
     _, col, _ = st.columns([1, 2, 1])
     with col:
         cloud        = st.session_state.selected_clouds[0]
@@ -82,7 +94,8 @@ def _run_scan():
             f'<div class="nb-scan-box"><div class="nb-scan-title">Scanning {total} security checks</div></div>',
             unsafe_allow_html=True,
         )
-        progress_bar = st.progress(0.0)
+        progress_slot = st.empty()
+        _render_progress(progress_slot, 0.0)
         pct_text     = st.empty()
         status_text  = st.empty()
 
@@ -139,15 +152,15 @@ def _run_scan():
                     )
                     
                     pct = completed_count / total
-                    progress_bar.progress(pct)
+                    _render_progress(progress_slot, pct)
                     pct_text.markdown(f'<p class="nb-scan-pct">{pct * 100:.1f}%</p>', unsafe_allow_html=True)
             else:
                 # If auth failed, just simulate completion
                 completed_count = total
-                progress_bar.progress(1.0)
+                _render_progress(progress_slot, 1.0)
                 pct_text.markdown('<p class="nb-scan-pct">100%</p>', unsafe_allow_html=True)
 
-        progress_bar.progress(1.0)
+        _render_progress(progress_slot, 1.0)
         pct_text.markdown('<p class="nb-scan-pct">100%</p>', unsafe_allow_html=True)
         status_text.markdown(
             '<p class="nb-scan-status" style="color:#14b8a6">Scan complete — loading results...</p>',

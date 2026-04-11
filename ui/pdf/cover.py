@@ -6,7 +6,7 @@ Cover page rendering — full-bleed hero, scan metadata card, severity pills.
 from .base import (
     ReportBase, SEV_COLORS, BG, SURFACE, SURFACE2, BORDER, TEXT, MUTED, ACCENT
 )
-from dashboard.icons import draw_cloud_icon_pdf
+from ui.icons import draw_cloud_icon_pdf
 
 
 def render_cover(pdf: ReportBase) -> None:

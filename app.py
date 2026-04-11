@@ -1,9 +1,9 @@
 import os
 import streamlit as st
 
-from dashboard.dashboard_page import page_dashboard
-from dashboard.history_page import page_history
-from dashboard.landing_page import page_landing
+from ui.dashboard_page import page_dashboard
+from ui.history_page import page_history
+from ui.landing_page import page_landing
 
 # ─────────────────────────────────────────────
 # PAGE CONFIG
@@ -19,7 +19,7 @@ st.set_page_config(
 # GLOBAL CSS
 # ─────────────────────────────────────────────
 def load_global_css():
-    css_path = os.path.join(os.path.dirname(__file__), "dashboard", "styles.css")
+    css_path = os.path.join(os.path.dirname(__file__), "ui", "styles.css")
     with open(css_path, "r", encoding="utf-8") as css_file:
         st.markdown(f"<style>{css_file.read()}</style>", unsafe_allow_html=True)
 

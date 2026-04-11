@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit_shadcn_ui as ui
 
-from dashboard.history_store import load_scan_history
+from ui.history_store import load_scan_history
 
 
 def page_history():
