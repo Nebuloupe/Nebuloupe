@@ -5,102 +5,103 @@ from botocore.exceptions import NoCredentialsError, PartialCredentialsError, Cli
 # Suppress verbose Azure CLI/Identity logging
 logging.getLogger('azure.identity').setLevel(logging.ERROR)
 logging.getLogger('azure.core').setLevel(logging.ERROR)
+logging.getLogger('azure.mgmt').setLevel(logging.ERROR)
 
 # Azure imports
 try:
-    from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential
-    from azure.core.exceptions import ClientAuthenticationError
+    from azure.identity import (
+        ClientSecretCredential,
+        DefaultAzureCredential,
+        InteractiveBrowserCredential,
+    )
 except ImportError:
-    DefaultAzureCredential = None
+    ClientSecretCredential  = None
+    DefaultAzureCredential  = None
     InteractiveBrowserCredential = None
 
-def get_aws_session():
+
+def get_aws_session(access_key=None, secret_key=None, region="us-east-1"):
     """
-    Attempts to authenticate with AWS. 
-    1. Checks local ~/.aws/credentials or Environment Variables.
-    2. If not found, prompts the user for manual input.
+    Authenticate with AWS using local credentials or provided keys.
+    Never calls input() — safe for Streamlit.
     """
     try:
-        # Step 1: Try to initialize with existing local config
-        session = boto3.Session()
-        sts = session.client('sts')
-        identity = sts.get_caller_identity()
-        
-        print(f"[+] Authenticated using local credentials (Account: {identity['Account']})")
-        return session
-
-    except (NoCredentialsError, PartialCredentialsError, ClientError):
-        print("\n[*] AWS Credentials Not Found Locally")
-        print("[*] Please enter your credentials manually:")
-        
-        access_key = input("    AWS Access Key ID: ").strip()
-        secret_key = input("    AWS Secret Access Key: ").strip()
-        region = input("    Default Region (e.g., us-east-1): ").strip() or "us-east-1"
-
-        try:
-            # Step 2: Try to initialize with user-provided keys
+        if access_key and secret_key:
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
-                region_name=region
+                region_name=region,
             )
-            # Verify the manual keys work
-            sts = session.client('sts')
-            sts.get_caller_identity()
-            
-            print(f"\n[+] Manual Authentication Successful!")
-            return session
-            
-        except Exception as e:
-            print(f"\n[-] Failed to authenticate: {e}")
-            return None
+        else:
+            session = boto3.Session()
 
-def get_azure_credentials():
-    """
-    Attempts to authenticate with Azure.
-    1. Checks local Azure CLI, Environment Variables, etc.
-    2. If not found or fails, prompts user for an interactive web login.
-    """
-    if DefaultAzureCredential is None:
-        print("[-] Azure libraries not installed. Please run: pip install -r requirements.txt")
+        identity = session.client("sts").get_caller_identity()
+        print(f"[+] AWS authenticated (Account: {identity['Account']})")
+        return session
+
+    except Exception as e:
+        print(f"[-] AWS authentication failed: {e}")
         return None
 
-    print("\n[*] Attempting to authenticate with Azure...")
-    try:
-        # Step 1: Try local config (CLI, Env vars) first, skipping interactive browser
-        credential = DefaultAzureCredential(exclude_interactive_browser_credential=True)
-        # Verify it works by requesting a basic management token
-        credential.get_token("https://management.azure.com/.default")
-        print("[+] Authenticated using local Azure credentials.")
-        return credential
-        
-    except Exception:
-        print("\n[*] Local Azure Credentials Not Found")
-        print("[*] Starting interactive web login fallback...")
-        
+
+def get_azure_credentials(tenant_id=None, client_id=None, client_secret=None, **kwargs):
+    """
+    Authenticate with Azure.
+
+    Priority:
+    1. Service Principal (tenant_id + client_id + client_secret) — most reliable
+    2. InteractiveBrowserCredential (tenant_id only) — opens browser tab
+    3. DefaultAzureCredential — requires az login or env vars
+
+    Never calls input() — safe for Streamlit.
+    """
+    if ClientSecretCredential is None:
+        print("[-] Azure libraries not installed.")
+        return None
+
+    # Option 1: Service Principal credentials provided
+    if tenant_id and client_id and client_secret:
         try:
-            # Step 2: Fallback to interactive browser login
-            print("[*] Note: If your subscriptions are in a different tenant, you will need to provide the Tenant ID.")
-            tenant_id = input("    Enter Azure Tenant ID (leave blank for default): ").strip()
-            
-            if tenant_id:
-                credential = InteractiveBrowserCredential(tenant_id=tenant_id)
-            else:
-                credential = InteractiveBrowserCredential()
-                
-            # Verify the manual login works
+            credential = ClientSecretCredential(
+                tenant_id=tenant_id,
+                client_id=client_id,
+                client_secret=client_secret,
+            )
             credential.get_token("https://management.azure.com/.default")
-            print("\n[+] Interactive Authentication Successful!")
+            print("[+] Azure authenticated via Service Principal.")
             return credential
-            
-        except Exception as ex:
-            print(f"\n[-] Failed to authenticate with Azure: {ex}")
+        except Exception as e:
+            print(f"[-] Azure Service Principal auth failed: {e}")
             return None
 
-if __name__ == "__main__":
-    # Test the scripts independently
-    # print("Testing AWS Auth...")
-    # get_aws_session()
-    
-    print("\nTesting Azure Auth...")
-    get_azure_credentials()
+    # Option 2: Interactive browser (tenant_id optional)
+    if tenant_id and InteractiveBrowserCredential:
+        try:
+            credential = InteractiveBrowserCredential(tenant_id=tenant_id)
+            credential.get_token("https://management.azure.com/.default")
+            print("[+] Azure authenticated via interactive browser.")
+            return credential
+        except Exception as e:
+            print(f"[-] Azure interactive auth failed: {e}")
+            return None
+
+    # Option 3: Default (az login / env vars) — with short timeout
+    if DefaultAzureCredential:
+        try:
+            import concurrent.futures
+            credential = DefaultAzureCredential(
+                exclude_interactive_browser_credential=True,
+                exclude_shared_token_cache_credential=True,
+            )
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(
+                    credential.get_token, "https://management.azure.com/.default"
+                )
+                future.result(timeout=8)   # fail fast if no local creds
+            print("[+] Azure authenticated via local credentials.")
+            return credential
+        except Exception as e:
+            print(f"[-] Azure default auth failed: {e}")
+            return None
+
+    return None

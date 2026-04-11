@@ -72,7 +72,6 @@ class ReportBase(FPDF):
         self._duration = fmt_duration(meta.get("scan_duration_seconds", 0))
         self._date, self._time = fmt_timestamp(meta.get("scan_started_at", ""))
         self._scan_id  = meta.get("scan_id", "")
-        self._is_cover = False
 
         self._top_margin = self.HEADER_H + self.TOP_PAD
         self.set_margins(self.MARGIN, self._top_margin, self.MARGIN)
@@ -91,7 +90,8 @@ class ReportBase(FPDF):
         self._fill(*BG)
         self.rect(0, 0, self.PAGE_W, self.PAGE_H, "F")
 
-        if self._is_cover:
+        # Page 1 is always the cover — no header bars
+        if self.page_no() == 1:
             return
 
         pw = self.PAGE_W
@@ -156,7 +156,8 @@ class ReportBase(FPDF):
     # ── Footer ────────────────────────────────────────────────────────────────
 
     def footer(self) -> None:
-        if self._is_cover:
+        # No footer on cover page (page 1)
+        if self.page_no() == 1:
             return
         self.set_y(-11)
         self.set_font("Helvetica", "", 6.5)

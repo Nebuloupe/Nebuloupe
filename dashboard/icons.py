@@ -80,22 +80,18 @@ def draw_aws_icon(pdf, x: float, y: float, size: float = 12) -> None:
 
 
 def draw_azure_icon(pdf, x: float, y: float, size: float = 12) -> None:
-    """Draw a simplified Azure 'A' chevron logo."""
-    # Left triangle (dark blue)
+    """Draw a simplified Azure 'A' chevron logo using rect blocks."""
+    # Left pillar (dark blue)
     pdf.set_fill_color(17, 74, 139)
-    pdf.polygon([
-        (x,              y + size),
-        (x + size * 0.5, y),
-        (x + size * 0.8, y + size),
-    ], style="F")
+    pdf.rect(x, y + size * 0.2, size * 0.35, size * 0.8, "F")
 
-    # Right triangle (light blue)
+    # Right pillar (light blue)
     pdf.set_fill_color(19, 137, 253)
-    pdf.polygon([
-        (x + size * 0.4, y + size * 0.3),
-        (x + size * 1.1, y + size),
-        (x + size * 0.8, y + size),
-    ], style="F")
+    pdf.rect(x + size * 0.65, y + size * 0.2, size * 0.35, size * 0.8, "F")
+
+    # Top bridge connecting both (cyan)
+    pdf.set_fill_color(44, 146, 223)
+    pdf.rect(x + size * 0.25, y, size * 0.5, size * 0.35, "F")
 
 
 def draw_gcp_icon(pdf, x: float, y: float, size: float = 12) -> None:

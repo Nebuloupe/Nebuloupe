@@ -11,10 +11,7 @@ from dashboard.icons import draw_cloud_icon_pdf
 
 def render_cover(pdf: ReportBase) -> None:
     """Draw the full-bleed cover page onto `pdf`."""
-    pdf._is_cover = True
-    pdf.add_page()
-    # _is_cover stays True until findings page resets it,
-    # so footer() is suppressed for this page.
+    pdf.add_page()  # page 1 — header() sees page_no()==1, paints BG only
 
     PW, PH = pdf.PAGE_W, pdf.PAGE_H
 

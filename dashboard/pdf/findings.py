@@ -8,8 +8,11 @@ from .base import ReportBase, SEV_COLORS, SURFACE, BORDER, TEXT, MUTED
 
 def render_findings(pdf: ReportBase, findings: list) -> None:
     """Render the detailed findings table onto a new page."""
-    pdf._is_cover = False   # ensure header/footer render normally
+    # Suppress footer for the cover page transition, but let header render normally.
+    pdf._is_cover        = False
+    pdf._suppress_footer = True   # skip footer() when add_page closes the cover
     pdf.add_page()
+    pdf._suppress_footer = False  # restore for all subsequent pages
     pdf.section_title("Detailed Findings")
 
     headers = ["SEV",  "CLOUD", "RULE ID", "CHECK",  "RESOURCE ID", "REGION", "CATEGORY", "STATUS"]
