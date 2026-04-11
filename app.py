@@ -8,7 +8,7 @@ from dashboard.landing_page import page_landing
 # PAGE CONFIG
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="Nebuloupe · Cloud Security Scanner",
+    page_title="Nebuloupe · Cloud Misconfiguration Security Scanner",
     page_icon="🔭",
     layout="wide",
     initial_sidebar_state="collapsed",

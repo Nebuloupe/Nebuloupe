@@ -83,7 +83,7 @@ def page_dashboard():
             severity_counts=sc,
             severity_order=SEV_ORDER,
         )
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
     with filter_col:
         st.markdown('<div class="nb-sec-hdr">Filters</div>', unsafe_allow_html=True)
@@ -162,10 +162,10 @@ def page_dashboard():
                 data=pdf_bytes,
                 file_name=f"nebuloupe-report-{meta.get('scan_id','scan')}.pdf",
                 mime="application/pdf",
-                use_container_width=True,
+              width="stretch",
             )
     with a2:
-        if st.button("← New Scan", key="new_scan", use_container_width=True):
+          if st.button("← New Scan", key="new_scan", width="stretch"):
             st.session_state.page     = "landing"
             st.session_state.results  = None
             st.session_state.selected_clouds = []
@@ -184,6 +184,6 @@ def page_dashboard():
     <span class="nb-footer-sep">&#183;</span>
     <span class="nb-footer-link">Changelog</span>
   </div>
-  <div class="nb-footer-copy">Multi-Cloud Security Scanner &nbsp;&middot;&nbsp; v1.0 &nbsp;&middot;&nbsp; Open Source</div>
+  <div class="nb-footer-copy">Cloud Misconfiguration Security Scanner &nbsp;&middot;&nbsp; v1.0 &nbsp;&middot;&nbsp; Open Source</div>
 </div>
 """, unsafe_allow_html=True)

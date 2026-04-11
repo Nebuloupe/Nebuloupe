@@ -43,7 +43,7 @@ def render_cover(pdf: ReportBase) -> None:
 
     pdf.set_font("Helvetica", "", 13)
     pdf._rgb(*MUTED)
-    pdf.cell(PW, 8, "Multi-Cloud Security Scan Report", align="C", ln=1)
+    pdf.cell(PW, 8, "Cloud Misconfiguration Security Scanner Report", align="C", ln=1)
 
     pdf.ln(4)
     pdf._draw(*ACCENT)
