@@ -217,6 +217,7 @@ __marimo__/
 
 # Output
 output/results.json
+output/scan_history.json
 
 # Local .terraform directories
 .terraform/

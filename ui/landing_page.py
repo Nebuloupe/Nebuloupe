@@ -6,23 +6,60 @@ Initialize Scan runs the same flow as before.
 """
 import os, sys, json, time, uuid, importlib, base64
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime, timezone
+from ui.history_store import append_scan_history, load_scan_history
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-def _b64(svg_bytes):
-    return "data:image/svg+xml;base64," + base64.b64encode(svg_bytes).decode()
+def _svg_data_uri(file_name):
+    icon_path = os.path.join(os.path.dirname(__file__), "icons", file_name)
+    with open(icon_path, "rb") as icon_file:
+        return "data:image/svg+xml;base64," + base64.b64encode(icon_file.read()).decode()
 
 
 CLOUD_DEFS = [
-    ("aws",   "AWS",   "Amazon Web Services",   "#FF9900",
-     _b64(b'<svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg"><text x="4" y="28" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="#FF9900">aws</text><path d="M2 36 Q40 46 78 36" stroke="#FF9900" stroke-width="3.5" fill="none" stroke-linecap="round"/><polygon points="2,33 8,39 2,39" fill="#FF9900"/><polygon points="78,33 72,39 78,39" fill="#FF9900"/></svg>')),
-    ("azure", "Azure", "Microsoft Azure",        "#60a5fa",
-     _b64(b'<svg viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0078D4"/><stop offset="1" stop-color="#50e6ff"/></linearGradient></defs><polygon points="22,4 38,4 52,46 36,46" fill="url(#ag)"/><polygon points="8,46 28,46 38,28 22,4" fill="#0078D4" opacity="0.7"/></svg>')),
-    ("gcp",   "GCP",   "Google Cloud Platform",  "#a78bfa",
-     _b64(b'<svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="24" height="24" rx="4" fill="#EA4335"/><rect x="30" y="2" width="24" height="24" rx="4" fill="#4285F4"/><rect x="2" y="30" width="24" height="24" rx="4" fill="#FBBC05"/><rect x="30" y="30" width="24" height="24" rx="4" fill="#34A853"/><rect x="16" y="16" width="24" height="24" rx="3" fill="#030712"/></svg>')),
+    ("aws",   "AWS",   "Amazon Web Services",   "#FF9900", _svg_data_uri("aws.svg"),   70, 44),
+    ("azure", "Azure", "Microsoft Azure",        "#60a5fa", _svg_data_uri("azure.svg"), 54, 54),
+    ("gcp",   "GCP",   "Google Cloud Platform",  "#34A853", _svg_data_uri("gcp.svg"),   54, 54),
 ]
+
+_cloud_selector_component = components.declare_component(
+    "cloud_selector_component",
+    path=os.path.join(os.path.dirname(__file__), "components", "cloud_selector"),
+)
+
+
+@st.dialog("Credentials Not Found")
+def _show_auth_error_popup(message: str):
+    st.error("Authentication failed for the selected cloud provider.")
+    st.code(message, language="text")
+    if st.button("Close", key="auth_error_close", width="stretch"):
+        st.session_state.auth_error_popup = None
+        st.rerun()
+
+
+def _render_cloud_selector(selected, disabled=False):
+    clouds = [
+        {
+            "id": cloud_id,
+            "short": short,
+            "full": full,
+            "glow": glow,
+            "img": img,
+            "w": img_w,
+            "h": img_h,
+        }
+        for cloud_id, short, full, glow, img, img_w, img_h in CLOUD_DEFS
+    ]
+    return _cloud_selector_component(
+        clouds=clouds,
+        selected=selected,
+        disabled=disabled,
+        key="cloud_selector",
+        default=selected or "",
+    )
 
 
 def _count_rule_files(cloud: str) -> list:
@@ -41,7 +78,20 @@ def _count_rule_files(cloud: str) -> list:
 
 def _run_scan():
     """Run scan file-by-file, updating progress bar after each rule completes."""
-    from engine.auth import get_aws_session, get_azure_credentials, get_gcp_project
+    from engine.auth import AuthError, get_aws_session, get_azure_credentials, get_gcp_project
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _render_progress(progress_slot, pct):
+        pct = max(0.0, min(1.0, float(pct)))
+        progress_slot.markdown(
+            (
+                '<div class="nb-shad-progress" role="progressbar" '
+                f'aria-valuemin="0" aria-valuemax="100" aria-valuenow="{pct * 100:.1f}">'
+                f'<div class="nb-shad-progress-fill" style="width:{pct * 100:.1f}%"></div>'
+                '</div>'
+            ),
+            unsafe_allow_html=True,
+        )
 
     _, col, _ = st.columns([1, 2, 1])
     with col:
@@ -53,17 +103,27 @@ def _run_scan():
             f'<div class="nb-scan-box"><div class="nb-scan-title">Scanning {total} security checks</div></div>',
             unsafe_allow_html=True,
         )
-        progress_bar = st.progress(0.0)
+        progress_slot = st.empty()
+        _render_progress(progress_slot, 0.0)
         pct_text     = st.empty()
         status_text  = st.empty()
 
         auth_ctx = None
-        if cloud == "aws":
-            auth_ctx = get_aws_session()
-        elif cloud == "azure":
-            auth_ctx = get_azure_credentials()
-        elif cloud == "gcp":
-            auth_ctx = get_gcp_project()
+        try:
+            if cloud == "aws":
+                auth_ctx = get_aws_session()
+            elif cloud == "azure":
+                auth_ctx = get_azure_credentials()
+            elif cloud == "gcp":
+                auth_ctx = get_gcp_project()
+        except AuthError as e:
+            st.session_state.scanning = False
+            st.session_state.auth_error_popup = str(e)
+            st.rerun()
+        except Exception as e:
+            st.session_state.scanning = False
+            st.session_state.auth_error_popup = f"[!] Authentication failed: {e}"
+            st.rerun()
 
         findings, errors = [], []
         scan_start_time  = time.time()
@@ -75,25 +135,50 @@ def _run_scan():
             except Exception:
                 pass
 
-        for idx, (display_name, mod_path) in enumerate(rule_modules):
-            status_text.markdown(
-                f'<p class="nb-scan-status">'
-                f'<span class="nb-scan-idx">[{idx+1}/{total}]</span> '
-                f'<span class="nb-scan-rule">{display_name}</span></p>',
-                unsafe_allow_html=True,
-            )
+        # Helper function to run a single rule module using the thread pool
+        def _run_module(display_name, mod_path, auth_ctx):
+            try:
+                module = importlib.import_module(f"rules.{mod_path}")
+                return display_name, module.run_check(auth_ctx), None
+            except Exception as e:
+                return display_name, [], str(e)
+
+        completed_count = 0
+        # Use a ThreadPoolExecutor for concurrent execution
+        max_workers = min(10, total)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             if auth_ctx:
-                try:
-                    module = importlib.import_module(f"rules.{mod_path}")
-                    findings.extend(module.run_check(auth_ctx))
-                except Exception as e:
-                    errors.append(str(e))
+                future_to_rule = {
+                    executor.submit(_run_module, display_name, mod_path, auth_ctx): display_name
+                    for display_name, mod_path in rule_modules
+                }
+                
+                for future in as_completed(future_to_rule):
+                    display_name, mod_findings, error = future.result()
+                    
+                    if error:
+                        errors.append(error)
+                    else:
+                        findings.extend(mod_findings)
+                        
+                    completed_count += 1
+                    status_text.markdown(
+                        f'<p class="nb-scan-status">'
+                        f'<span class="nb-scan-idx">[{completed_count}/{total}]</span> '
+                        f'<span class="nb-scan-rule">Completed {display_name}</span></p>',
+                        unsafe_allow_html=True,
+                    )
+                    
+                    pct = completed_count / total
+                    _render_progress(progress_slot, pct)
+                    pct_text.markdown(f'<p class="nb-scan-pct">{pct * 100:.1f}%</p>', unsafe_allow_html=True)
+            else:
+                # If auth failed, just simulate completion
+                completed_count = total
+                _render_progress(progress_slot, 1.0)
+                pct_text.markdown('<p class="nb-scan-pct">100%</p>', unsafe_allow_html=True)
 
-            pct = (idx + 1) / total
-            progress_bar.progress(pct)
-            pct_text.markdown(f'<p class="nb-scan-pct">{pct * 100:.1f}%</p>', unsafe_allow_html=True)
-
-        progress_bar.progress(1.0)
+        _render_progress(progress_slot, 1.0)
         pct_text.markdown('<p class="nb-scan-pct">100%</p>', unsafe_allow_html=True)
         status_text.markdown(
             '<p class="nb-scan-status" style="color:#14b8a6">Scan complete — loading results...</p>',
@@ -143,6 +228,8 @@ def _run_scan():
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as fh:
             json.dump(report, fh, indent=4)
+
+        append_scan_history(report)
         time.sleep(0.4)
 
     st.session_state.results  = report
@@ -158,31 +245,90 @@ def page_landing():
         st.session_state.selected_clouds = []
     if "scanning" not in st.session_state:
         st.session_state.scanning = False
+    if "auth_error_popup" not in st.session_state:
+        st.session_state.auth_error_popup = None
+
+    if st.session_state.auth_error_popup:
+        _show_auth_error_popup(st.session_state.auth_error_popup)
 
     is_scanning = st.session_state.scanning
     selected    = st.session_state.selected_clouds[0] if st.session_state.selected_clouds else ""
+    if "show_history_panel" not in st.session_state:
+        st.session_state.show_history_panel = False
+
+    nav_history = st.query_params.get("history")
+    if nav_history == "1":
+        st.session_state.show_history_panel = True
+        try:
+            del st.query_params["history"]
+        except Exception:
+            pass
+        st.rerun()
 
     # ── Nav ───────────────────────────────────────────────────────────────────
     st.markdown("""
 <div class="nb-nav">
   <div class="nb-nav-logo">
     <span class="nb-nav-icon">&#128301;</span>
-    <span class="nb-nav-brand">NEBULOUPE</span>
-    <span class="nb-nav-tag">CSPM</span>
+    <span class="nb-nav-brand">NEBULOUPE</span>    <span class="nb-nav-tag">CMSS</span>
   </div>
-  <div class="nb-nav-links">
-    <span class="nb-nav-link">Docs</span>
-    <span class="nb-nav-link">GitHub</span>
-  </div>
+    <div class="nb-nav-actions">
+                <form method="get" target="_self" style="margin:0;">
+                        <input type="hidden" name="history" value="1" />
+                        <button type="submit" class="nb-nav-history">Scan History</button>
+                </form>
+    </div>
 </div>
 """, unsafe_allow_html=True)
+
+    if st.session_state.show_history_panel:
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+        top_l, top_r = st.columns([4.5, 1.2])
+        with top_l:
+            st.markdown('<div class="nb-sec-hdr">Previous Scans</div>', unsafe_allow_html=True)
+        with top_r:
+            if st.button("Close", key="close_history_panel", width="stretch"):
+                st.session_state.show_history_panel = False
+                st.rerun()
+
+        history = load_scan_history()
+        if not history:
+            st.info("No previous scans found yet. Run a scan to populate history.")
+        else:
+            for i, item in enumerate(history):
+                cloud = str(item.get("cloud_scope", "unknown")).upper()
+                findings = item.get("total_findings", 0)
+                score = item.get("severity_score_total", 0)
+                status = str(item.get("status", "unknown")).upper()
+                started = item.get("scan_started_at", "")
+
+                info_col, btn_col = st.columns([5, 1])
+                with info_col:
+                    st.markdown(
+                        f"""
+<div class=\"nb-stat-card\" style=\"margin-bottom:10px;\">
+  <div class=\"nb-stat-label\">{cloud} • {status}</div>
+  <div style=\"font-size:13px;color:#e2e8f0;\">Findings: {findings} • Risk Score: {score}</div>
+  <div style=\"font-size:11px;color:#94a3b8;margin-top:4px;\">Started: {started}</div>
+</div>
+""",
+                        unsafe_allow_html=True,
+                    )
+                with btn_col:
+                    if st.button("Open", key=f"open_hist_inline_{i}", width="stretch"):
+                        st.session_state.results = item.get("report")
+                        st.session_state.page = "dashboard"
+                        st.rerun()
+
+        # Keep history as an inline view on landing page.
+        return
 
     # ── Hero ──────────────────────────────────────────────────────────────────
     st.markdown("""
 <div class="nb-hero-wrap">
   <div class="nb-hero-content">
-    <div class="nb-hero-eyebrow"><span class="nb-eyebrow-dot"></span>Cloud Security Posture Management</div>
-    <h1 class="nb-hero-title">The Intelligent<br><span class="nb-hero-accent">Multi-Cloud</span><br>Security Scanner</h1>
+        <div class="nb-hero-eyebrow"><span class="nb-eyebrow-dot"></span>Cloud Misconfiguration Security Scanner</div>
+        <h1 class="nb-hero-title">The Intelligent<br><span class="nb-hero-accent">Multi-Cloud</span><br>Security Scanner</h1>
     <p class="nb-hero-sub">Detect misconfigurations, compliance violations, and security risks across AWS, Azure &amp; GCP &#8212; in seconds.</p>
   </div>
   <div class="nb-stats-row">
@@ -201,91 +347,18 @@ def page_landing():
         unsafe_allow_html=True,
     )
 
-    # Visual cards rendered as HTML (display only)
+    # Visual cards rendered by a custom component (clickable cards, no browser redirect/new tab)
     _, card_col, _ = st.columns([1, 2.2, 1])
     with card_col:
-        card_parts = ""
-        for cloud_id, short, full, glow, img in CLOUD_DEFS:
-            sel_cls = "sel" if cloud_id == selected else ""
-            check   = '<div class="nb-card-check">&#10003;</div>' if cloud_id == selected else ""
-            dim     = "opacity:0.4;pointer-events:none;" if is_scanning else ""
-            card_parts += (
-                f'<div class="nb-cloud-card {sel_cls}" style="--c:{glow};{dim}">'
-                f'{check}'
-                f'<div class="nb-card-glow"></div>'
-                f'<div class="nb-card-3d">'
-                f'<div class="nb-box-face nb-box-top"></div>'
-                f'<div class="nb-box-face nb-box-front">'
-                f'<img src="{img}" width="46" height="46" alt="{short}"/>'
-                f'</div>'
-                f'<div class="nb-box-face nb-box-right"></div>'
-                f'</div>'
-                f'<div class="nb-card-name">{short}</div>'
-                f'<div class="nb-card-sub">{full}</div>'
-                f'</div>'
-            )
-
-        if is_scanning:
-            status_html = '<p class="nb-hint-text" style="color:#14b8a6;margin-top:10px;">Scanning — provider locked</p>'
-        elif selected:
-            sel_info    = next(c for c in CLOUD_DEFS if c[0] == selected)
-            status_html = (
-                f'<div class="nb-sel-status" style="margin-top:10px;">'
-                f'<span class="nb-sel-dot" style="background:{sel_info[3]};box-shadow:0 0 8px {sel_info[3]};"></span>'
-                f'<span class="nb-sel-text">{sel_info[2]} selected</span>'
-                f'</div>'
-            )
-        else:
-            status_html = '<p class="nb-hint-text" style="margin-top:10px;">Click a cloud card to select a provider</p>'
-
-        st.markdown(
-            f'<div class="nb-cloud-grid">{card_parts}</div>{status_html}',
-            unsafe_allow_html=True,
-        )
-
-    # Invisible hit targets over each card (labels hidden — selection is via the cards only)
-    _, b1, b2, b3, _ = st.columns([1, 0.73, 0.73, 0.73, 1])
-    for col, (cloud_id, short, full, *_) in zip([b1, b2, b3], CLOUD_DEFS):
-        with col:
-            # Label is invisible via CSS; tooltip explains the control for a11y.
-            if st.button(
-                "\u200b",
-                key=f"sel_{cloud_id}",
-                help=f"Select {full}",
-                use_container_width=True,
-                disabled=is_scanning,
-            ):
-                if cloud_id == selected:
-                    st.session_state.selected_clouds = []
-                else:
-                    st.session_state.selected_clouds = [cloud_id]
-                st.rerun()
-
-    # Only the provider overlay uses five columns; scan row has three (avoids wrong margin).
-    st.markdown("""
-<style>
-[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) {
-    margin-top: -210px !important;
-    position: relative !important;
-    z-index: 10 !important;
-}
-[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) button {
-    opacity: 0 !important;
-    height: 200px !important;
-    min-height: 200px !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    cursor: pointer !important;
-}
-[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) button:hover,
-[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) button:focus {
-    opacity: 0 !important;
-    transform: none !important;
-    box-shadow: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
+        selected_from_component = _render_cloud_selector(selected=selected, disabled=is_scanning)
+        if (
+            selected_from_component
+            and selected_from_component in {"aws", "azure", "gcp"}
+            and selected_from_component != selected
+            and not is_scanning
+        ):
+            st.session_state.selected_clouds = [selected_from_component]
+            st.rerun()
 
     # ── Azure credential form (shown when needed) ─────────────────────────────
     if selected == "azure" and st.session_state.get("azure_needs_creds"):
@@ -306,7 +379,7 @@ def page_landing():
                 tenant  = st.text_input("Tenant ID *",      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", value=st.session_state.get("azure_creds", {}).get("tenant_id", ""))
                 cid     = st.text_input("Client ID",         placeholder="Service Principal App ID (optional)",  value=st.session_state.get("azure_creds", {}).get("client_id", "") or "")
                 csecret = st.text_input("Client Secret",     placeholder="Service Principal Secret (optional)",  type="password")
-                submitted = st.form_submit_button("Save & Scan", use_container_width=True)
+                submitted = st.form_submit_button("Save & Scan", width="stretch")
             if submitted:
                 if not tenant:
                     st.error("Tenant ID is required.")
@@ -333,7 +406,7 @@ def page_landing():
             if st.button(
                 "Initialize Scan",
                 key="scan_btn",
-                use_container_width=True,
+                width="stretch",
                 disabled=not selected,
             ):
                 st.session_state.scanning = True
@@ -373,6 +446,6 @@ def page_landing():
     <span class="nb-footer-sep">&#183;</span>
     <span class="nb-footer-link">Changelog</span>
   </div>
-  <div class="nb-footer-copy">Multi-Cloud Security Scanner &nbsp;&middot;&nbsp; v1.0 &nbsp;&middot;&nbsp; Open Source</div>
+    <div class="nb-footer-copy">Cloud Misconfiguration Security Scanner &nbsp;&middot;&nbsp; v1.0 &nbsp;&middot;&nbsp; Open Source</div>
 </div>
 """, unsafe_allow_html=True)

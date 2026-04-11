@@ -1,6 +1,6 @@
 import boto3
 import logging
-from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 
 # Suppress verbose Azure CLI/Identity logging
 logging.getLogger('azure.identity').setLevel(logging.ERROR)
@@ -10,134 +10,149 @@ logging.getLogger('azure.mgmt').setLevel(logging.ERROR)
 # GCP imports
 try:
     import google.auth
+    from google.auth.exceptions import DefaultCredentialsError
 except ImportError:
     google = None
+    DefaultCredentialsError = Exception
 
 # Azure imports
 try:
-    from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential
-
+    from azure.identity import DefaultAzureCredential
+    from azure.identity._exceptions import CredentialUnavailableError
     from azure.core.exceptions import ClientAuthenticationError
 except ImportError:
-    ClientSecretCredential  = None
-    DefaultAzureCredential  = None
-    InteractiveBrowserCredential = None
+    DefaultAzureCredential = None
+    CredentialUnavailableError = Exception
+    ClientAuthenticationError = Exception
 
 
-def get_aws_session(access_key=None, secret_key=None, region="us-east-1"):
+class AuthError(Exception):
+    """Raised when cloud authentication fails with user-actionable guidance."""
+
+
+def _raise_auth_error(lines):
+    message = "\n".join(lines)
+    print(message)
+    raise AuthError(message)
+
+
+def get_aws_session(region="us-east-1"):
     """
-    Authenticate with AWS using local credentials or provided keys.
-    Never calls input() — safe for Streamlit.
+    Authenticate with AWS using default credential resolution chain:
+    Environment Variables first (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY),
+    then fallback to local CLI config (~/.aws/credentials).
     """
     try:
-        if access_key and secret_key:
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-                region_name=region,
-            )
-        else:
-            session = boto3.Session()
-
+        session = boto3.Session(region_name=region)
         identity = session.client("sts").get_caller_identity()
         print(f"[+] AWS authenticated (Account: {identity['Account']})")
         return session
 
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        _raise_auth_error([
+            "",
+            "[!] AWS Authentication Failed",
+            "    No valid AWS credentials could be found.",
+            "",
+            "    Please authenticate using one of the following methods:",
+            "    1. CI/CD Environment: Set AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY",
+            "    2. Local Development: Run 'aws configure'",
+        ])
     except Exception as e:
-        print(f"[-] AWS authentication failed: {e}")
-        return None
+        _raise_auth_error([
+            "",
+            f"[!] Unexpected AWS authentication error: {e}",
+        ])
 
 
-def get_azure_credentials(tenant_id=None, client_id=None, client_secret=None, **kwargs):
+def get_azure_credentials():
     """
-    Authenticate with Azure.
-
-    Priority:
-    1. Service Principal (tenant_id + client_id + client_secret) — most reliable
-    2. InteractiveBrowserCredential (tenant_id only) — opens browser tab
-    3. DefaultAzureCredential — requires az login or env vars
-
-    Never calls input() — safe for Streamlit.
+    Authenticate with Azure strictly using DefaultAzureCredential.
+    Resolution chain:
+    Environment Variables first (AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID),
+    then fallback to local CLI identity (az login).
+    Browser login completely disabled.
     """
-    if ClientSecretCredential is None:
-        print("[-] Azure libraries not installed.")
-        return None
+    if DefaultAzureCredential is None:
+        _raise_auth_error([
+            "[-] Azure identity library (azure-identity) not installed.",
+        ])
 
-    # Option 1: Service Principal credentials provided
-    if tenant_id and client_id and client_secret:
-        try:
-            credential = ClientSecretCredential(
-                tenant_id=tenant_id,
-                client_id=client_id,
-                client_secret=client_secret,
-            )
-            credential.get_token("https://management.azure.com/.default")
-            print("[+] Azure authenticated via Service Principal.")
-            return credential
-        except Exception as e:
-            print(f"[-] Azure Service Principal auth failed: {e}")
-            return None
+    try:
+        # Exclude browser, exclude GUI prompts to ensure headless execution
+        credential = DefaultAzureCredential(
+            exclude_interactive_browser_credential=True,
+            exclude_shared_token_cache_credential=True
+        )
+        # Attempt to get a token to early trigger credential validation
+        credential.get_token("https://management.azure.com/.default")
+        print("[+] Azure authenticated via DefaultAzureCredential.")
+        return credential
 
-    # Option 2: Interactive browser (tenant_id optional)
-    if tenant_id and InteractiveBrowserCredential:
-        try:
-            credential = InteractiveBrowserCredential(tenant_id=tenant_id)
-            credential.get_token("https://management.azure.com/.default")
-            print("[+] Azure authenticated via interactive browser.")
-            return credential
-        except Exception as e:
-            print(f"[-] Azure interactive auth failed: {e}")
-            return None
+    except (CredentialUnavailableError, ClientAuthenticationError) as e:
+        _raise_auth_error([
+            "",
+            "[!] Azure Authentication Failed",
+            "    No valid Azure credentials could be found.",
+            "",
+            "    Please authenticate using one of the following methods:",
+            "    1. CI/CD Environment: Set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, & AZURE_TENANT_ID",
+            "    2. Local Development: Run 'az login'",
+        ])
+    except Exception as e:
+        if "CredentialUnavailableError" in str(type(e)):
+            _raise_auth_error([
+                "",
+                "[!] Azure Authentication Failed",
+                "    No valid Azure credentials could be found.",
+                "",
+                "    Please authenticate using one of the following methods:",
+                "    1. CI/CD Environment: Set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, & AZURE_TENANT_ID",
+                "    2. Local Development: Run 'az login'",
+            ])
+            
+        _raise_auth_error([
+            "",
+            f"[!] Unexpected Azure authentication error: {e}",
+        ])
 
-    # Option 3: Default (az login / env vars) — with short timeout
-    if DefaultAzureCredential:
-        try:
-            import concurrent.futures
-            credential = DefaultAzureCredential(
-                exclude_interactive_browser_credential=True,
-                exclude_shared_token_cache_credential=True,
-            )
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                future = ex.submit(
-                    credential.get_token, "https://management.azure.com/.default"
-                )
-                future.result(timeout=8)   # fail fast if no local creds
-            print("[+] Azure authenticated via local credentials.")
-            return credential
-        except Exception as e:
-            print(f"[-] Azure default auth failed: {e}")
-            return None
 
 def get_gcp_project():
     """
-    Attempts to get the GCP Project ID.
-    1. Checks Application Default Credentials (ADC).
-    2. If not found, prompts the user.
+    Authenticate with GCP securely using Application Default Credentials (ADC).
+    Resolution chain:
+    Environment variable first (GOOGLE_APPLICATION_CREDENTIALS),
+    then fallback to gcloud default credentials.
     """
-    # Check if google module is available globally
-    if "google" not in globals() or google is None:
-        print("[-] Google auth libraries not installed.")
-        # Fallback to prompt if google library isn't there
-        project = input("\n    Enter Google Cloud Project ID: ").strip()
-        return project if project else None
+    if google is None:
+        _raise_auth_error([
+            "[-] Google auth library (google-auth) not installed.",
+        ])
 
-    print("\n[*] Attempting to determine GCP Project ID...")
     try:
         credentials, project = google.auth.default()
         if project:
             print(f"[+] Found GCP Project via ADC: {project}")
-            return project
-    except Exception as e:
-        print(f"[-] Could not find default project via ADC: {e}")
+        else:
+            print("[-] Unable to determine GCP Project ID from ADC.")
+            
+        return project
 
-    print("[*] Please enter your project ID manually:")
-    project = input("    GCP Project ID: ").strip()
-    return project if project else None
+    except DefaultCredentialsError as e:
+        _raise_auth_error([
+            "",
+            "[!] GCP Authentication Failed",
+            "    Could not locate Application Default Credentials (ADC).",
+            "",
+            "    Please authenticate using one of the following methods:",
+            "    1. CI/CD Environment: Set GOOGLE_APPLICATION_CREDENTIALS to the JSON key path",
+            "    2. Local Development: Run 'gcloud auth application-default login'",
+        ])
+    except Exception as e:
+        _raise_auth_error([
+            "",
+            f"[!] Unexpected GCP authentication error: {e}",
+        ])
 
 if __name__ == "__main__":
-    # Test the scripts independently
-    # print("Testing AWS Auth...")
-    # get_aws_session()
-
-    print("\nTesting Azure Auth...")
-    # get_azure_credentials()
+    pass

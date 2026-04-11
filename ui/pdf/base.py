@@ -110,7 +110,7 @@ class ReportBase(FPDF):
         self.set_font("Helvetica", "", 8)
         self._rgb(*MUTED)
         self.set_xy(42, 3.5)
-        self.cell(80, 5, "Multi-Cloud Security Report", ln=0)
+        self.cell(80, 5, "Cloud Misconfiguration Security Scanner Report", ln=0)
 
         self.set_font("Helvetica", "", 7)
         self._rgb(*MUTED)

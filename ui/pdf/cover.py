@@ -6,7 +6,41 @@ Cover page rendering — full-bleed hero, scan metadata card, severity pills.
 from .base import (
     ReportBase, SEV_COLORS, BG, SURFACE, SURFACE2, BORDER, TEXT, MUTED, ACCENT
 )
-from dashboard.icons import draw_cloud_icon_pdf
+
+
+def draw_cloud_icon_pdf(pdf, cloud: str, x: float, y: float, size: float = 12) -> None:
+    """Draw a compact cloud badge for the cover page using PDF primitives."""
+    key = (cloud or "").strip().lower()
+    palette = {
+        "aws": (251, 146, 60),
+        "azure": (96, 165, 250),
+        "gcp": (52, 168, 83),
+    }
+    label_map = {
+        "aws": "AWS",
+        "azure": "AZ",
+        "gcp": "GCP",
+    }
+
+    fill = palette.get(key, (148, 163, 184))
+    label = label_map.get(key, "CLOUD")
+
+    # Outer badge circle
+    pdf.set_fill_color(*fill)
+    pdf.set_draw_color(*fill)
+    pdf.ellipse(x, y, size, size, style="FD")
+
+    # Inner contrast ring
+    inset = max(1.2, size * 0.08)
+    pdf.set_fill_color(*BG)
+    pdf.set_draw_color(*BG)
+    pdf.ellipse(x + inset, y + inset, size - 2 * inset, size - 2 * inset, style="FD")
+
+    # Label text
+    pdf.set_text_color(*fill)
+    pdf.set_font("Helvetica", "B", max(6, int(size * 0.24)))
+    pdf.set_xy(x, y + size * 0.33)
+    pdf.cell(size, size * 0.34, label, align="C")
 
 
 def render_cover(pdf: ReportBase) -> None:
@@ -43,7 +77,7 @@ def render_cover(pdf: ReportBase) -> None:
 
     pdf.set_font("Helvetica", "", 13)
     pdf._rgb(*MUTED)
-    pdf.cell(PW, 8, "Multi-Cloud Security Scan Report", align="C", ln=1)
+    pdf.cell(PW, 8, "Cloud Misconfiguration Security Scanner Report", align="C", ln=1)
 
     pdf.ln(4)
     pdf._draw(*ACCENT)

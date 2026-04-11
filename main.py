@@ -5,7 +5,7 @@ from engine.scanner import run_scanner
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Nebuloupe - Multi-Cloud Misconfiguration Security Scanner",
+    description="Nebuloupe - Cloud Misconfiguration Security Scanner",
         epilog="""
 Examples:
   python main.py --cloud aws                                    # API scan only (needs AWS creds)
@@ -91,7 +91,7 @@ Examples:
 
     logging.info(f"")
     logging.info(f"  ╔══════════════════════════════════════════════╗")
-    logging.info(f"  ║     🔭 NEBULOUPE Security Scanner            ║")
+    logging.info(f"  ║     🔭 NEBULOUPE Cloud Misconfiguration Security Scanner")
     logging.info(f"  ╚══════════════════════════════════════════════╝")
     logging.info(f"")
     logging.info(f"  [*] Cloud Scope : {args.cloud.upper()}")

@@ -40,7 +40,7 @@ def build_severity_pie(total_findings, severity_counts, severity_order):
             y=0.5,
             xanchor="left",
             x=0.82,
-            font=dict(color="#475569", size=11, family="JetBrains Mono"),
+            font=dict(color="#cbd5e1", size=12, family="JetBrains Mono"),
         ),
     )
     return fig
@@ -60,12 +60,12 @@ def build_findings_rows_html(filtered_findings):
         rows_html += f"""<tr>
   <td><span class="nb-pill {severity}">{severity}</span></td>
   <td><span class="nb-cloud-badge {cloud}">{cloud_icon} {cloud.upper()}</span></td>
-  <td style="color:#94a3b8;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px;">{finding.get('rule_id', 'N/A')}</td>
-  <td style="color:#cbd5e1;font-size:12px;">{finding.get('check', 'N/A')}</td>
-  <td style="color:#475569;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{finding.get('resource_id', 'N/A')}</td>
-  <td style="color:#334155;font-size:11px;">{finding.get('region','global')}</td>
-  <td style="color:#475569;font-size:11px;">{finding.get('category','N/A')}</td>
-  <td style="color:#334155;max-width:260px;font-size:11px;">{description[:80]}{'…' if len(description)>80 else ''}</td>
+    <td style="color:#dbe5f0;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:12px;">{finding.get('rule_id', 'N/A')}</td>
+    <td style="color:#e5edf8;font-size:13px;font-weight:600;">{finding.get('check', 'N/A')}</td>
+    <td style="color:#dbe5f0;font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{finding.get('resource_id', 'N/A')}</td>
+    <td style="color:#cbd5e1;font-size:12px;">{finding.get('region','global')}</td>
+    <td style="color:#cbd5e1;font-size:12px;">{finding.get('category','N/A')}</td>
+    <td style="color:#dbe5f0;max-width:320px;font-size:12px;line-height:1.55;">{description[:120]}{'…' if len(description)>120 else ''}</td>
   <td><span class="nb-status-pill {status}">{status}</span></td>
 </tr>"""
 
