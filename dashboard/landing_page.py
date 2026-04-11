@@ -40,7 +40,8 @@ def _count_rule_files(cloud: str) -> list:
 
 
 def _run_scan():
-    from engine.auth import get_aws_session, get_azure_credentials
+    """Run scan file-by-file, updating progress bar after each rule completes."""
+    from engine.auth import get_aws_session, get_azure_credentials, get_gcp_project
 
     _, col, _ = st.columns([1, 2, 1])
     with col:
@@ -60,16 +61,9 @@ def _run_scan():
         if cloud == "aws":
             auth_ctx = get_aws_session()
         elif cloud == "azure":
-            az       = st.session_state.get("azure_creds", {})
-            auth_ctx = get_azure_credentials(
-                tenant_id=az.get("tenant_id"),
-                client_id=az.get("client_id"),
-                client_secret=az.get("client_secret"),
-            )
-            if auth_ctx is None:
-                st.session_state.scanning = False
-                st.session_state["azure_needs_creds"] = True
-                st.rerun()
+            auth_ctx = get_azure_credentials()
+        elif cloud == "gcp":
+            auth_ctx = get_gcp_project()
 
         findings, errors = [], []
         scan_start_time  = time.time()

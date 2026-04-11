@@ -42,6 +42,29 @@ def run_check(credential):
                                 "ddos_protection_enabled": False
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-6.6",
+                            "check": "DDoS Protection Standard not Enabled on VNet",
+                            "severity": "Low",    # Note: Often a costly feature, flagged as Low/Medium to avoid false high urgency for non-prod
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Network",
+                            "resource_type": "Microsoft.Network/virtualNetworks",
+                            "resource_id": vnet.id,
+                            "region": vnet.location,
+                            "description": f"Virtual Network '{vnet.name}' has Standard DDoS Protection enabled.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/ddos-protection/manage-ddos-protection"],
+                            "resource_attributes": {
+                                "enable_ddos_protection": True
+                            },
+                            "evidence": {
+                                "vnet_name": vnet.name,
+                                "ddos_protection_enabled": True
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze DDoS Protection for VNet {vnet.name}: {e}")
                     

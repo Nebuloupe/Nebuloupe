@@ -56,6 +56,29 @@ def run_check(credential):
                                 "installed_extensions": installed_extensions
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-7.3", 
+                            "check": "Vulnerability Scanner not installed on VM",
+                            "severity": "High",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Compute",
+                            "resource_type": "Microsoft.Compute/virtualMachines",
+                            "resource_id": vm.id,
+                            "region": vm.location,
+                            "description": f"Virtual Machine '{vm.name}' has a recognized vulnerability assessment extension installed.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/defender-for-cloud/deploy-vulnerability-assessment-vm"],
+                            "resource_attributes": {
+                                "vm_name": vm.name,
+                                "has_vuln_scanner": True
+                            },
+                            "evidence": {
+                                "installed_extensions": installed_extensions
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze VM extensions for {vm.name}: {e}")
                     

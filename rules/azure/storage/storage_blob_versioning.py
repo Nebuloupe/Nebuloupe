@@ -48,6 +48,28 @@ def run_check(credential):
                                 "is_versioning_enabled": bool(is_versioning_enabled)
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-3.9", # Custom/CIS related
+                            "check": "Storage Account Blob Versioning Not Enabled",
+                            "severity": "Low",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Storage",
+                            "resource_type": "Microsoft.Storage/storageAccounts",
+                            "resource_id": account.id,
+                            "region": account.location,
+                            "description": f"Storage account '{account.name}' has blob versioning enabled.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/storage/blobs/versioning-enable"],
+                            "resource_attributes": {
+                                "is_versioning_enabled": bool(is_versioning_enabled)
+                            },
+                            "evidence": {
+                                "is_versioning_enabled": bool(is_versioning_enabled)
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze blob versioning for storage account {account.name}: {e}")
                     

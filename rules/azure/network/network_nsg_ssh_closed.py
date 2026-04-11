@@ -98,6 +98,32 @@ def run_check(credential):
                                         "access": rule.access
                                     }
                                 })
+                            else:
+                                findings.append({
+                                    "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                    "rule_id": "CIS-AZURE-9.1",
+                                    "check": "Port 22 (SSH) is Open to World",
+                                    "severity": "High",
+                                    "status": "PASS",
+                                    "cloud_provider": "azure",
+                                    "category": "Network",
+                                    "resource_type": "Microsoft.Network/networkSecurityGroups/securityRules",
+                                    "resource_id": rule.id,
+                                    "region": nsg.location,
+                                    "description": f"NSG '{nsg.name}' does not allow inbound public access (0.0.0.0/0) to SSH (port 22) via rule '{rule.name}'.",
+                                    "remediation": "No action required.",
+                                    "references": ["https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview"],
+                                    "resource_attributes": {
+                                        "nsg_name": nsg.name,
+                                        "rule_name": rule.name,
+                                        "priority": rule.priority
+                                    },
+                                    "evidence": {
+                                        "source_address_prefix": source_prefixes,
+                                        "destination_port_range": dest_ports,
+                                        "access": rule.access
+                                    }
+                                })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze NSG {nsg.name}: {e}")
                     

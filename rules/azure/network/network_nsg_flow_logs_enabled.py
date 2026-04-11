@@ -54,6 +54,29 @@ def run_check(credential):
                             "uncovered_nsg_count": len(missing_nsgs)
                         }
                     })
+                else:
+                    findings.append({
+                        "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                        "rule_id": "CIS-AZURE-6.4", # Related to logging network traffic
+                        "check": "NSG Flow Logs are not enabled for all NSGs",
+                        "severity": "Medium",
+                        "status": "PASS",
+                        "cloud_provider": "azure",
+                        "category": "Network",
+                        "resource_type": "Microsoft.Network/networkSecurityGroups",
+                        "resource_id": f"/subscriptions/{sub_id}",
+                        "region": "global",
+                        "description": f"All {len(nsg_ids)} Network Security Group(s) have active Flow Logs configured in Network Watcher.",
+                        "remediation": "No action required.",
+                        "references": ["https://learn.microsoft.com/en-us/azure/network-watcher/network-watcher-nsg-flow-logging-portal"],
+                        "resource_attributes": {
+                            "total_nsgs": len(nsg_ids),
+                            "nsgs_without_flow_logs": 0
+                        },
+                        "evidence": {
+                            "uncovered_nsg_count": 0
+                        }
+                    })
             except Exception as e:
                 print(f"       [!] Warning: Could not analyze NSG Flow logs for subscription {sub_id}: {e}")
                 

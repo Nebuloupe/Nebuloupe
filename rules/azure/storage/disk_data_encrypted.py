@@ -53,6 +53,29 @@ def run_check(credential):
                                     "encryption": str(getattr(encryption, "type", "None")) if encryption else "None"
                                 }
                             })
+                        else:
+                            findings.append({
+                                "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                "rule_id": "CIS-AZURE-7.2",
+                                "check": "Data Disk is not Encrypted",
+                                "severity": "High",
+                                "status": "PASS",
+                                "cloud_provider": "azure",
+                                "category": "Storage",
+                                "resource_type": "Microsoft.Compute/disks",
+                                "resource_id": disk.id,
+                                "region": disk.location,
+                                "description": f"Data Disk '{disk.name}' has encryption enabled.",
+                                "remediation": "No action required.",
+                                "references": ["https://learn.microsoft.com/en-us/azure/virtual-machines/windows/disk-encryption-overview"],
+                                "resource_attributes": {
+                                    "disk_type": "DataDisk",
+                                    "encryption_type": str(getattr(encryption, "type", "None")) if encryption else "None"
+                                },
+                                "evidence": {
+                                    "encryption": str(getattr(encryption, "type", "None")) if encryption else "None"
+                                }
+                            })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze encryption for Data disk {disk.name}: {e}")
                     

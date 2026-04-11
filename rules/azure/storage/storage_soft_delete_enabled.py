@@ -50,6 +50,28 @@ def run_check(credential):
                                 "blob_soft_delete_enabled": False
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-3.8",
+                            "check": "Storage Account Soft Delete Not Enabled for Blobs",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Storage",
+                            "resource_type": "Microsoft.Storage/storageAccounts",
+                            "resource_id": account.id,
+                            "region": account.location,
+                            "description": f"Storage account '{account.name}' has soft delete enabled for blobs.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview"],
+                            "resource_attributes": {
+                                "blob_soft_delete_enabled": True
+                            },
+                            "evidence": {
+                                "blob_soft_delete_enabled": True
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze soft delete for storage account {account.name}: {e}")
                     

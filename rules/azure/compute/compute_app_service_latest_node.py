@@ -45,6 +45,29 @@ def run_check(credential):
                                     "node_version": node_version
                                 }
                             })
+                        else:
+                            findings.append({
+                                "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                "rule_id": "CIS-AZURE-9.8", 
+                                "check": "App Service Outdated Node.js Version",
+                                "severity": "Medium",
+                                "status": "PASS",
+                                "cloud_provider": "azure",
+                                "category": "App Service",
+                                "resource_type": "Microsoft.Web/sites",
+                                "resource_id": app.id,
+                                "region": app.location,
+                                "description": f"App Service '{app.name}' is running a supported Node.js version or it is disabled.",
+                                "remediation": "No action required.",
+                                "references": ["https://learn.microsoft.com/en-us/azure/app-service/configure-language-nodejs"],
+                                "resource_attributes": {
+                                    "app_name": app.name,
+                                    "node_version": node_version
+                                },
+                                "evidence": {
+                                    "node_version": node_version
+                                }
+                            })
                     except Exception as e:
                         pass
                         

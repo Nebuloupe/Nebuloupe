@@ -43,6 +43,29 @@ def run_check(credential):
                                     "public_ip_id": ip_config.public_ip_address.id
                                 }
                             })
+                        else:
+                            findings.append({
+                                "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                "rule_id": "CIS-AZURE-6.1", # Broadly part of limiting internet attack surface
+                                "check": "Virtual Machine NIC has a Public IP Address",
+                                "severity": "High",
+                                "status": "PASS",
+                                "cloud_provider": "azure",
+                                "category": "Network",
+                                "resource_type": "Microsoft.Network/networkInterfaces",
+                                "resource_id": nic.id,
+                                "region": nic.location,
+                                "description": f"Network Interface '{nic.name}' does not have a direct Public IP address assigned.",
+                                "remediation": "No action required.",
+                                "references": ["https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/virtual-network-public-ip-address"],
+                                "resource_attributes": {
+                                    "nic_name": nic.name,
+                                    "ip_config_name": ip_config.name
+                                },
+                                "evidence": {
+                                    "public_ip_id": None
+                                }
+                            })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze IP configurations for NIC {nic.name}: {e}")
                     

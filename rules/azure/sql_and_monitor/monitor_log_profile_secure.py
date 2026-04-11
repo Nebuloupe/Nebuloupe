@@ -44,6 +44,31 @@ def run_check(credential):
                             "locations": profile.locations
                         }
                     })
+                else:
+                    findings.append({
+                        "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                        "rule_id": "CIS-AZURE-5.2",
+                        "check": "Log Profile Not Capturing All Regions and Action Types",
+                        "severity": "Medium",
+                        "status": "PASS",
+                        "cloud_provider": "azure",
+                        "category": "Monitor",
+                        "resource_type": "Microsoft.Insights/logprofiles",
+                        "resource_id": profile.id,
+                        "region": profile.location,
+                        "description": f"Log profile '{profile.name}' is capturing 'global' location and mandatory categories (Write/Delete/Action).",
+                        "remediation": "No action required.",
+                        "references": ["https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log"],
+                        "resource_attributes": {
+                            "profile_name": profile.name,
+                            "categories": profile.categories,
+                            "locations": profile.locations
+                        },
+                        "evidence": {
+                            "categories": profile.categories,
+                            "locations": profile.locations
+                        }
+                    })
         except Exception as e:
             pass
     except Exception as e:

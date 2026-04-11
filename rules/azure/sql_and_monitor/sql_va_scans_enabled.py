@@ -39,6 +39,29 @@ def run_check(credential):
                             "va_enabled": False
                         }
                     })
+                else:
+                    findings.append({
+                        "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                        "rule_id": "CIS-AZURE-4.1.4",
+                        "check": "SQL Server Vulnerability Assessment Not Enabled",
+                        "severity": "Medium",
+                        "status": "PASS",
+                        "cloud_provider": "azure",
+                        "category": "SQL",
+                        "resource_type": "Microsoft.Sql/servers",
+                        "resource_id": server.id,
+                        "region": server.location,
+                        "description": f"SQL Server '{server.name}' has Vulnerability Assessment (VA) enabled.",
+                        "remediation": "No action required.",
+                        "references": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/sql-vulnerability-assessment"],
+                        "resource_attributes": {
+                            "server_name": server.name,
+                            "va_enabled": True
+                        },
+                        "evidence": {
+                            "va_enabled": True
+                        }
+                    })
             except Exception as e:
                 pass
     except Exception as e:

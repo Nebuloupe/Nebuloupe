@@ -48,6 +48,28 @@ def run_check(credential):
                                     "network_bypass": bypass_str
                                 }
                             })
+                        else:
+                            findings.append({
+                                "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                "rule_id": "CIS-AZURE-3.7",
+                                "check": "Storage Account does not allow Trusted Microsoft Services",
+                                "severity": "Medium",
+                                "status": "PASS",
+                                "cloud_provider": "azure",
+                                "category": "Storage",
+                                "resource_type": "Microsoft.Storage/storageAccounts",
+                                "resource_id": account.id,
+                                "region": account.location,
+                                "description": f"Storage account '{account.name}' allows Trusted Microsoft Services to bypass its firewall.",
+                                "remediation": "No action required.",
+                                "references": ["https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security#exceptions"],
+                                "resource_attributes": {
+                                    "network_bypass": bypass_str
+                                },
+                                "evidence": {
+                                    "network_bypass": bypass_str
+                                }
+                            })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze network rules for storage account {account.name}: {e}")
                     

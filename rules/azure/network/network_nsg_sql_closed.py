@@ -83,6 +83,30 @@ def run_check(credential):
                                             "rule_details": f"Rule {rule.name} allows Source: {src_prefix} to Ports: {dest_ports}"
                                         }
                                     })
+                                else:
+                                    findings.append({
+                                        "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                                        "rule_id": "CIS-AZURE-6.1",
+                                        "check": "NSG Inbound SQL Open to Internet",
+                                        "severity": "High",
+                                        "status": "PASS",
+                                        "cloud_provider": "azure",
+                                        "category": "Network",
+                                        "resource_type": "Microsoft.Network/networkSecurityGroups",
+                                        "resource_id": nsg.id,
+                                        "region": nsg.location,
+                                        "description": f"NSG '{nsg.name}' does not allow inbound SQL database access from the internet.",
+                                        "remediation": "No action required.",
+                                        "references": ["https://learn.microsoft.com/en-us/azure/security/fundamentals/network-best-practices"],
+                                        "resource_attributes": {
+                                            "nsg_name": nsg.name,
+                                            "rule_name": rule.name,
+                                            "exposed_ports": list(set(db_ports_open))
+                                        },
+                                        "evidence": {
+                                            "rule_details": f"Rule {rule.name} does not expose SQL ports to the Internet."
+                                        }
+                                    })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze NSG rules for {nsg.name}: {e}")
                     

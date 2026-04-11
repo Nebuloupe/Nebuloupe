@@ -42,6 +42,29 @@ def run_check(credential):
                                 "https_only": https_only
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-9.1", 
+                            "check": "App Service HTTPS Only Disabled",
+                            "severity": "High",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "App Service",
+                            "resource_type": "Microsoft.Web/sites",
+                            "resource_id": app.id,
+                            "region": app.location,
+                            "description": f"App Service '{app.name}' enforces HTTPS Only.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/app-service/configure-ssl-bindings#enforce-https"],
+                            "resource_attributes": {
+                                "app_name": app.name,
+                                "https_only": https_only
+                            },
+                            "evidence": {
+                                "https_only": https_only
+                            }
+                        })
             except Exception as e:
                 pass # Probably not registered or no access
                 

@@ -60,6 +60,30 @@ def run_check(credential):
                             "active_network_watcher_regions": list(watcher_regions)
                         }
                     })
+                else:
+                    findings.append({
+                        "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                        "rule_id": "CIS-AZURE-6.5",
+                        "check": "Network Watcher Enabled",
+                        "severity": "Medium",
+                        "status": "PASS",
+                        "cloud_provider": "azure",
+                        "category": "Network",
+                        "resource_type": "Microsoft.Network/networkWatchers",
+                        "resource_id": f"/subscriptions/{sub_id}",
+                        "region": "global",
+                        "description": f"Subscription '{sub_id}' has Network Watcher enabled in all regions where VNets are deployed.",
+                        "remediation": "No action required.",
+                        "references": ["https://learn.microsoft.com/en-us/azure/network-watcher/network-watcher-create"],
+                        "resource_attributes": {
+                            "subscription_id": sub_id,
+                            "missing_watcher_regions": []
+                        },
+                        "evidence": {
+                            "active_vnet_regions": list(active_regions),
+                            "active_network_watcher_regions": list(watcher_regions)
+                        }
+                    })
             except Exception as e:
                 print(f"       [!] Warning: Could not analyze network watchers for subscription {sub_id}: {e}")
                 

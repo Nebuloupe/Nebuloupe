@@ -7,7 +7,7 @@ def run_check(project_id: str):
     findings = []
 
     try:
-        scc = discovery.build('securitycenter', 'v1')
+        scc = discovery.build('securitycenter', 'v1', cache_discovery=False)
 
         # List sources for the project — a successful call confirms SCC is accessible/enabled
         sources_resp = scc.projects().sources().list(

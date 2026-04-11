@@ -6,7 +6,7 @@ IAP_IP_RANGE = "35.235.240.0/20"
 def run_check(project_id: str):
     from googleapiclient import discovery
 
-    compute = discovery.build('compute', 'v1')
+    compute = discovery.build('compute', 'v1', cache_discovery=False)
     findings = []
 
     firewalls = compute.firewalls().list(project=project_id).execute()

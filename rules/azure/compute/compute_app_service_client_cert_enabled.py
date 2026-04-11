@@ -42,6 +42,29 @@ def run_check(credential):
                                 "client_cert_enabled": client_cert_enabled
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-9.6", 
+                            "check": "App Service Client Certificate Not Required",
+                            "severity": "High",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "App Service",
+                            "resource_type": "Microsoft.Web/sites",
+                            "resource_id": app.id,
+                            "region": app.location,
+                            "description": f"App Service '{app.name}' requires client certificates.",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/app-service/app-service-web-configure-tls-mutual-auth"],
+                            "resource_attributes": {
+                                "app_name": app.name,
+                                "client_cert_enabled": client_cert_enabled
+                            },
+                            "evidence": {
+                                "client_cert_enabled": client_cert_enabled
+                            }
+                        })
             except Exception as e:
                 pass 
                 

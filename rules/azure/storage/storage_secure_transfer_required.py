@@ -42,6 +42,28 @@ def run_check(credential):
                                 "enable_https_traffic_only": False
                             }
                         })
+                    else:
+                        findings.append({
+                            "finding_id": f"NL-AZ-{uuid.uuid4().hex[:6].upper()}",
+                            "rule_id": "CIS-AZURE-3.1",
+                            "check": "Storage Transit Encryption Not Required",
+                            "severity": "Medium",
+                            "status": "PASS",
+                            "cloud_provider": "azure",
+                            "category": "Storage",
+                            "resource_type": "Microsoft.Storage/storageAccounts",
+                            "resource_id": account.id,
+                            "region": account.location,
+                            "description": f"Storage account '{account.name}' requires secure transfer (HTTPS).",
+                            "remediation": "No action required.",
+                            "references": ["https://learn.microsoft.com/en-us/azure/storage/common/storage-require-secure-transfer"],
+                            "resource_attributes": {
+                                "enable_https_traffic_only": True
+                            },
+                            "evidence": {
+                                "enable_https_traffic_only": True
+                            }
+                        })
                 except Exception as e:
                     print(f"       [!] Warning: Could not analyze storage account {account.name}: {e}")
                     
