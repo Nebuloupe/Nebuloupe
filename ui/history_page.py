@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit_shadcn_ui as ui
 
 from ui.history_store import load_scan_history
 
@@ -31,6 +30,55 @@ def page_history():
         st.info("No previous scans found yet. Run a scan to populate history.")
         return
 
+    st.markdown(
+        """
+<style>
+div[class*="st-key-hist_row_"] button {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    padding: 14px 18px !important;
+    border-radius: 14px !important;
+    border: 1px solid #1e293b !important;
+    background: #0a0f1e !important;
+    color: #e2e8f0 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    line-height: 1.6 !important;
+    text-align: left !important;
+    text-indent: 0 !important;
+    white-space: pre-line !important;
+    box-shadow: none !important;
+}
+div[class*="st-key-hist_row_"] button::before,
+div[class*="st-key-hist_row_"] button::after {
+    content: none !important;
+    display: none !important;
+}
+div[class*="st-key-hist_row_"] button:hover {
+    transform: none !important;
+    border-color: #334155 !important;
+    background: #0b1220 !important;
+    box-shadow: none !important;
+}
+div[class*="st-key-hist_row_"] button > div {
+    width: 100% !important;
+    display: block !important;
+    text-align: left !important;
+}
+div[class*="st-key-hist_row_"] button p {
+    margin: 0 !important;
+    text-align: left !important;
+}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
     st.markdown('<div class="nb-sec-hdr">Previous Scans</div>', unsafe_allow_html=True)
 
     for i, item in enumerate(history):
@@ -40,20 +88,14 @@ def page_history():
         status = str(item.get("status", "unknown")).upper()
         started = item.get("scan_started_at", "")
 
-        info_col, btn_col = st.columns([5, 1])
-        with info_col:
-            st.markdown(
-                f"""
-<div class=\"nb-stat-card\" style=\"margin-bottom:10px;\">
-  <div class=\"nb-stat-label\">{cloud} • {status}</div>
-  <div style=\"font-size:13px;color:#e2e8f0;\">Findings: {findings} • Risk Score: {score}</div>
-  <div style=\"font-size:11px;color:#94a3b8;margin-top:4px;\">Started: {started}</div>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-        with btn_col:
-            if ui.button(text="Open", key=f"open_hist_{i}"):
-                st.session_state.results = item.get("report")
-                st.session_state.page = "dashboard"
-                st.rerun()
+        row_label = (
+            f"{cloud} • {status}\n"
+            f"Findings: {findings} • Risk Score: {score}\n"
+            f"Started: {started}"
+        )
+        if st.button(row_label, key=f"hist_row_{i}", width="stretch"):
+            st.session_state.results = item.get("report")
+            st.session_state.page = "dashboard"
+            st.rerun()
+
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)

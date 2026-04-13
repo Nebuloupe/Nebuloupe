@@ -85,22 +85,34 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
 
     # Discover IaC rules from rules/iac/{cloud_scope}/ and rules/iac/common/
     rules_base_path = 'rules'
-    iac_rules_path = os.path.join(rules_base_path, 'iac', cloud_scope)
+    selected_scopes = [cloud_scope]
+    if cloud_scope == "all":
+        selected_scopes = ["aws", "azure", "gcp"]
+
     common_rules_path = os.path.join(rules_base_path, 'iac', 'common')
-    
-    if not os.path.exists(iac_rules_path):
-        print(f"   [!] No IaC rules directory found at: {iac_rules_path}")
-        return full_report
 
     iac_plugins = []
+    seen_modules = set()
 
     # Load cloud-specific IaC rules
-    for root, dirs, files in os.walk(iac_rules_path):
-        for f in files:
-            if f.endswith('.py') and f != '__init__.py':
-                rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
-                module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
-                iac_plugins.append((cloud_scope, module_path))
+    found_scope_rules = False
+    for scope in selected_scopes:
+        iac_rules_path = os.path.join(rules_base_path, 'iac', scope)
+        if not os.path.exists(iac_rules_path):
+            continue
+        found_scope_rules = True
+        for root, dirs, files in os.walk(iac_rules_path):
+            for f in files:
+                if f.endswith('.py') and f != '__init__.py':
+                    rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
+                    module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
+                    if module_path not in seen_modules:
+                        iac_plugins.append((scope, module_path))
+                        seen_modules.add(module_path)
+
+    if not found_scope_rules:
+        print(f"   [!] No IaC rules directory found for scope: {cloud_scope}")
+        return full_report
 
     # Load cross-cloud common rules (db passwords, SSH keys, etc.)
     if os.path.exists(common_rules_path):
@@ -109,7 +121,9 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
                 if f.endswith('.py') and f != '__init__.py':
                     rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
                     module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
-                    iac_plugins.append((cloud_scope, module_path))
+                    if module_path not in seen_modules:
+                        iac_plugins.append((cloud_scope, module_path))
+                        seen_modules.add(module_path)
 
     print(f"   [*] Loaded {len(iac_plugins)} IaC rule(s) for {cloud_scope.upper()} (incl. common)")
     print()
