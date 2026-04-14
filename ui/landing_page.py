@@ -366,6 +366,9 @@ def _run_scan():
         score_total   = 0
         risk_by_cloud = {"aws": 0, "azure": 0, "gcp": 0}
         for f in findings:
+            if str(f.get("status", "")).upper() != "FAIL":
+                continue
+
             sev = f.get("severity", "Low")
             if sev in sev_counts:
                 sev_counts[sev] += 1

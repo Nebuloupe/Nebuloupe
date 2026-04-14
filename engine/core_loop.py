@@ -141,6 +141,10 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
             # Integrate findings into report
             for finding in findings:
                 full_report["findings"].append(finding)
+
+                # Score only failing findings.
+                if str(finding.get("status", "")).upper() != "FAIL":
+                    continue
                 
                 severity = finding.get("severity", "Low")
                 if severity in full_report["summary"]["severity_counts"]:
@@ -324,6 +328,10 @@ def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_
             
             for finding in result["findings"]:
                 full_report["findings"].append(finding)
+
+                # Score only failing findings.
+                if str(finding.get("status", "")).upper() != "FAIL":
+                    continue
                 
                 # Update metrics
                 severity = finding.get("severity", "Low")

@@ -139,6 +139,9 @@ def _merge_reports(iac_report, api_report):
     total_score = 0
     
     for f in merged["findings"]:
+        if str(f.get("status", "")).upper() != "FAIL":
+            continue
+
         sev = f.get("severity", "Low")
         if sev in severity_counts:
             severity_counts[sev] += 1
