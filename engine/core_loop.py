@@ -16,8 +16,41 @@ SEVERITY_SCORES = {
     "Low": 1
 }
 
+SEVERITY_CANONICAL = {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+}
+
 # Maximum parallel workers for API rule execution
 API_MAX_WORKERS = 10
+
+
+def _normalize_finding(finding, default_provider=""):
+    """Normalize finding fields so output format is consistent across rules."""
+    if not isinstance(finding, dict):
+        return None
+
+    normalized = dict(finding)
+
+    status = str(normalized.get("status", "")).strip().upper()
+    if status:
+        normalized["status"] = status
+
+    severity_raw = str(normalized.get("severity", "Low")).strip().lower()
+    normalized["severity"] = SEVERITY_CANONICAL.get(severity_raw, "Low")
+
+    region_raw = normalized.get("region", "")
+    region = str(region_raw).strip().lower()
+    normalized["region"] = region if region else "global"
+
+    provider_raw = normalized.get("cloud_provider", default_provider)
+    provider = str(provider_raw).strip().lower()
+    if provider:
+        normalized["cloud_provider"] = provider
+
+    return normalized
 
 
 def start_iac_scan(cloud_scope="aws", tf_path="."):
@@ -139,7 +172,11 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
             findings = module.run_check(None, tf_path=tf_path)
             
             # Integrate findings into report
-            for finding in findings:
+            for raw_finding in findings:
+                finding = _normalize_finding(raw_finding, provider)
+                if not finding:
+                    continue
+
                 full_report["findings"].append(finding)
 
                 # Score only failing findings.
@@ -326,7 +363,11 @@ def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_
                 full_report["scan_metadata"]["errors"].append(result["error"])
                 full_report["scan_metadata"]["status"] = "partial"
             
-            for finding in result["findings"]:
+            for raw_finding in result["findings"]:
+                finding = _normalize_finding(raw_finding, result["provider"])
+                if not finding:
+                    continue
+
                 full_report["findings"].append(finding)
 
                 # Score only failing findings.

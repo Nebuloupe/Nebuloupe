@@ -235,7 +235,7 @@ def page_dashboard():
         unsafe_allow_html=True,
     )
 
-    rows_html = build_findings_rows_html(filtered)
+    rows_html, modals_html = build_findings_rows_html(filtered)
     st.markdown(
         f"""
 <div class="nb-tbl-wrap">
@@ -243,20 +243,21 @@ def page_dashboard():
     <thead><tr>
       <th>Severity</th><th>Cloud</th><th>Rule ID</th><th>Check</th>
       <th>Resource ID</th><th>Region</th><th>Category</th>
-      <th>Description</th><th>Status</th>
+      <th>Description</th><th>Remediation</th><th>Status</th>
     </tr></thead>
     <tbody>
-      {rows_html if rows_html else '<tr><td colspan="9" class="nb-tbl-empty">No findings match the current filters.</td></tr>'}
+      {rows_html if rows_html else '<tr><td colspan="10" class="nb-tbl-empty">No findings match the current filters.</td></tr>'}
     </tbody>
   </table>
 </div>
+{modals_html}
 """,
         unsafe_allow_html=True,
     )
 
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
-    _, a1, a2, _ = st.columns([3, 1, 1, 3])
+    _, a1, gap, a2, _ = st.columns([2.2, 1.5, 0.25, 1.5, 2.2])
     with a1:
         pdf_bytes = generate_pdf_report(report)
         if pdf_bytes:
@@ -267,6 +268,8 @@ def page_dashboard():
                 mime="application/pdf",
                 width="stretch",
             )
+    with gap:
+      st.markdown("&nbsp;", unsafe_allow_html=True)
     with a2:
         if st.button("← New Scan", key="new_scan", width="stretch"):
             st.session_state.page = "landing"

@@ -254,6 +254,18 @@ section[data-testid="stSidebar"]{display:none!important;}
 .nb-status-pill.FAIL{color:#f87171;}
 .nb-status-pill.PASS{color:#4ade80;}
 
+/* ── REMEDIATION MODAL ── */
+.nb-rem-btn{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;border:1px solid rgba(20,184,166,0.45);background:rgba(20,184,166,0.1);color:#5eead4;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:0.3px;white-space:nowrap;transition:all 0.15s ease;}
+.nb-rem-btn:hover{background:rgba(20,184,166,0.18);border-color:rgba(45,212,191,0.75);color:#99f6e4;transform:translateY(-1px);}
+.nb-rem-modal{position:fixed;inset:0;background:rgba(2,6,23,0.72);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:1200;padding:18px;}
+.nb-rem-modal:target{display:flex;}
+.nb-rem-modal-card{position:relative;width:min(680px,94vw);max-height:82vh;overflow:auto;background:linear-gradient(180deg,#0a0f1e,#070b16);border:1px solid #1e293b;border-radius:14px;padding:16px 18px 18px;box-shadow:0 22px 58px rgba(0,0,0,0.55);}
+.nb-rem-close{position:absolute;top:8px;right:10px;color:#94a3b8;text-decoration:none;font-size:26px;line-height:1;padding:2px 6px;}
+.nb-rem-close:hover{color:#e2e8f0;}
+.nb-rem-title{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#f8fafc;letter-spacing:0.2px;margin:0 24px 6px 0;}
+.nb-rem-meta{font-size:12px;color:#94a3b8;line-height:1.45;margin-bottom:12px;}
+.nb-rem-body{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;font-size:13px;line-height:1.7;color:#dbe5f0;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px;}
+
 /* ── WIDGET OVERRIDES ── */
 .stMultiSelect label,.stSelectbox label{color:#dbe5f0!important;font-size:11px!important;font-weight:700!important;letter-spacing:1px!important;text-transform:uppercase!important;}
 [data-baseweb="select"]>div{background:#0a0f1e!important;border-color:#334155!important;color:#e2e8f0!important;font-family:'Inter',sans-serif!important;font-size:14px!important;border-radius:10px!important;}

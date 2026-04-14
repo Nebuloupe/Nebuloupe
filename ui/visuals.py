@@ -1,4 +1,5 @@
 import plotly.graph_objects as go
+import html
 
 
 def build_severity_pie(total_findings, severity_counts, severity_order):
@@ -133,27 +134,53 @@ def build_severity_score_gauge(severity_score_total, total_findings):
 
 
 def build_findings_rows_html(filtered_findings):
-    """Render findings rows HTML for the dashboard table."""
-    cloud_icons = {"aws": "🟠", "azure": "🔵", "gcp": "🟢"}
-    rows_html = ""
+        """Render findings rows and remediation modals HTML for the dashboard table."""
+        cloud_icons = {"aws": "🟠", "azure": "🔵", "gcp": "🟢"}
+        rows_html = ""
+        modals_html = ""
 
-    for finding in filtered_findings:
-        cloud = finding.get("cloud_provider", "unknown")
-        severity = finding.get("severity", "Unknown")
-        status = finding.get("status", "FAIL")
-        cloud_icon = cloud_icons.get(cloud, "⚪")
-        description = finding.get("description", "")
-        rows_html += f"""<tr>
-  <td><span class="nb-pill {severity}">{severity}</span></td>
-  <td><span class="nb-cloud-badge {cloud}">{cloud_icon} {cloud.upper()}</span></td>
-    <td style="color:#dbe5f0;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:12px;">{finding.get('rule_id', 'N/A')}</td>
-    <td style="color:#e5edf8;font-size:13px;font-weight:600;">{finding.get('check', 'N/A')}</td>
-    <td style="color:#dbe5f0;font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{finding.get('resource_id', 'N/A')}</td>
-    <td style="color:#cbd5e1;font-size:12px;">{finding.get('region','global')}</td>
-    <td style="color:#cbd5e1;font-size:12px;">{finding.get('category','N/A')}</td>
-    <td style="color:#dbe5f0;max-width:320px;font-size:12px;line-height:1.55;">{description[:120]}{'…' if len(description)>120 else ''}</td>
-  <td><span class="nb-status-pill {status}">{status}</span></td>
+        for idx, finding in enumerate(filtered_findings):
+                cloud = finding.get("cloud_provider", "unknown")
+                severity = finding.get("severity", "Unknown")
+                status = finding.get("status", "FAIL")
+                cloud_icon = cloud_icons.get(cloud, "⚪")
+                description = finding.get("description", "")
+                remediation = finding.get(
+                        "remediation", "No remediation guidance provided for this finding."
+                )
+                modal_id = f"nb-rem-modal-{idx}"
+
+                check = html.escape(str(finding.get("check", "N/A")))
+                rule_id = html.escape(str(finding.get("rule_id", "N/A")))
+                resource_id = html.escape(str(finding.get("resource_id", "N/A")))
+                region = html.escape(str(finding.get("region", "global")))
+                category = html.escape(str(finding.get("category", "N/A")))
+                description = html.escape(str(description))
+                remediation = html.escape(str(remediation))
+
+                rows_html += f"""<tr>
+    <td><span class="nb-pill {severity}">{severity}</span></td>
+    <td><span class="nb-cloud-badge {cloud}">{cloud_icon} {cloud.upper()}</span></td>
+        <td style="color:#dbe5f0;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:12px;">{rule_id}</td>
+        <td style="color:#e5edf8;font-size:13px;font-weight:600;max-width:180px;white-space:normal;overflow-wrap:anywhere;word-break:break-word;">{check}</td>
+        <td style="color:#dbe5f0;font-size:12px;max-width:340px;white-space:normal;overflow-wrap:anywhere;word-break:break-word;">{resource_id}</td>
+        <td style="color:#cbd5e1;font-size:12px;white-space:normal;overflow-wrap:anywhere;word-break:break-word;">{region}</td>
+        <td style="color:#cbd5e1;font-size:12px;white-space:normal;overflow-wrap:anywhere;word-break:break-word;">{category}</td>
+        <td style="color:#dbe5f0;max-width:320px;font-size:12px;line-height:1.55;white-space:normal;overflow-wrap:anywhere;word-break:break-word;">{description}</td>
+        <td><a class="nb-rem-btn" href="#{modal_id}">View</a></td>
+    <td><span class="nb-status-pill {status}">{status}</span></td>
 </tr>"""
 
-    return rows_html
+                modals_html += f"""
+<div id="{modal_id}" class="nb-rem-modal">
+    <div class="nb-rem-modal-card">
+        <a href="#" class="nb-rem-close" aria-label="Close remediation">&times;</a>
+        <div class="nb-rem-title">Remediation</div>
+        <div class="nb-rem-meta">{rule_id} • {check}</div>
+        <div class="nb-rem-body">{remediation}</div>
+    </div>
+</div>
+"""
+
+        return rows_html, modals_html
 

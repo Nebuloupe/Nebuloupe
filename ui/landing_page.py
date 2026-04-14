@@ -34,6 +34,13 @@ CLOUD_DEFS = [
     ),
 ]
 
+SEVERITY_CANONICAL = {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+}
+
 _cloud_selector_component = components.declare_component(
     "cloud_selector_component",
     path=os.path.join(os.path.dirname(__file__), "components", "cloud_selector"),
@@ -173,6 +180,31 @@ def _detect_tf_cloud_provider(tf_file_path: str) -> str:
     if len(matches) == 1:
         return matches[0]
     return ""
+
+
+def _normalize_finding(finding: dict, default_provider: str = "") -> dict:
+    if not isinstance(finding, dict):
+        return {}
+
+    normalized = dict(finding)
+
+    status = str(normalized.get("status", "")).strip().upper()
+    if status:
+        normalized["status"] = status
+
+    severity_raw = str(normalized.get("severity", "Low")).strip().lower()
+    normalized["severity"] = SEVERITY_CANONICAL.get(severity_raw, "Low")
+
+    region_raw = normalized.get("region", "")
+    region = str(region_raw).strip().lower()
+    normalized["region"] = region if region else "global"
+
+    provider_raw = normalized.get("cloud_provider", default_provider)
+    provider = str(provider_raw).strip().lower()
+    if provider:
+        normalized["cloud_provider"] = provider
+
+    return normalized
 
 
 def _run_scan():
@@ -335,7 +367,11 @@ def _run_scan():
                     if error:
                         errors.append(error)
                     else:
-                        findings.extend(mod_findings)
+                        findings.extend(
+                            _normalize_finding(finding, cloud)
+                            for finding in mod_findings
+                            if isinstance(finding, dict)
+                        )
                         
                     completed_count += 1
                     status_text.markdown(
