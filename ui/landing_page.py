@@ -482,11 +482,13 @@ def page_landing():
             pass
         st.rerun()
 
+    logo_uri = _svg_data_uri("logo.svg")
+
     # ── Nav ───────────────────────────────────────────────────────────────────
-    st.markdown("""
+    st.markdown(f"""
 <div class="nb-nav">
   <div class="nb-nav-logo">
-    <span class="nb-nav-icon">&#128301;</span>
+    <img class="nb-nav-icon" src="{logo_uri}" alt="Nebuloupe logo" />
     <span class="nb-nav-brand">NEBULOUPE</span>    <span class="nb-nav-tag">CMSS</span>
   </div>
     <div class="nb-nav-actions">
@@ -700,9 +702,9 @@ div[class*="st-key-inline_hist_row_"] button p {
             )
 
     # ── Footer ────────────────────────────────────────────────────────────────
-    st.markdown("""
+    st.markdown(f"""
 <div class="nb-footer">
-  <div class="nb-footer-brand">&#128301; NEBULOUPE</div>
+    <div class="nb-footer-brand"><img class="nb-brand-logo" src="{logo_uri}" alt="Nebuloupe logo" /> NEBULOUPE</div>
   <div class="nb-footer-links">
     <span class="nb-footer-link">Documentation</span>
     <span class="nb-footer-sep">&#183;</span>

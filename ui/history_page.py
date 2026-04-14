@@ -1,14 +1,25 @@
+import base64
+import os
+
 import streamlit as st
 
 from ui.history_store import load_scan_history
 
 
+def _logo_data_uri():
+    icon_path = os.path.join(os.path.dirname(__file__), "icons", "logo.svg")
+    with open(icon_path, "rb") as icon_file:
+        return "data:image/svg+xml;base64," + base64.b64encode(icon_file.read()).decode()
+
+
 def page_history():
+    logo_uri = _logo_data_uri()
+
     st.markdown(
-        """
+        f"""
 <div class=\"nb-topbar\">
   <div class=\"nb-topbar-left\">
-    <span class=\"nb-topbar-logo\">🔭 NEBULOUPE</span>
+    <span class=\"nb-topbar-logo\"><img class=\"nb-brand-logo\" src=\"{logo_uri}\" alt=\"Nebuloupe logo\" /> NEBULOUPE</span>
     <span class=\"nb-topbar-sep\">/</span>
     <span class=\"nb-topbar-page\">Scan History</span>
   </div>

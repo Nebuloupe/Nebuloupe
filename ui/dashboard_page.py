@@ -1,5 +1,7 @@
 import streamlit as st
 from collections import Counter
+import os
+import base64
 
 from ui.pdf import generate_pdf_report
 from ui.visuals import build_findings_rows_html
@@ -7,7 +9,14 @@ from ui.visuals import build_findings_rows_html
 SEV_ORDER = ["Critical", "High", "Medium", "Low"]
 
 
+def _logo_data_uri():
+    icon_path = os.path.join(os.path.dirname(__file__), "icons", "logo.svg")
+    with open(icon_path, "rb") as icon_file:
+        return "data:image/svg+xml;base64," + base64.b64encode(icon_file.read()).decode()
+
+
 def page_dashboard():
+    logo_uri = _logo_data_uri()
     report = st.session_state.results
     meta = report["scan_metadata"]
     summary = report["summary"]
@@ -48,7 +57,7 @@ def page_dashboard():
         f"""
 <div class="nb-topbar">
   <div class="nb-topbar-left">
-    <span class="nb-topbar-logo">🔭 NEBULOUPE</span>
+    <span class="nb-topbar-logo"><img class="nb-brand-logo" src="{logo_uri}" alt="Nebuloupe logo" /> NEBULOUPE</span>
     <span class="nb-topbar-sep">/</span>
     <span class="nb-topbar-page">Security Findings</span>
   </div>
@@ -279,9 +288,9 @@ def page_dashboard():
             st.rerun()
 
     st.markdown(
-        """
+        f"""
 <div class="nb-footer">
-  <div class="nb-footer-brand">&#128301; NEBULOUPE</div>
+  <div class="nb-footer-brand"><img class="nb-brand-logo" src="{logo_uri}" alt="Nebuloupe logo" /> NEBULOUPE</div>
   <div class="nb-footer-links">
     <span class="nb-footer-link">Documentation</span>
     <span class="nb-footer-sep">&#183;</span>
