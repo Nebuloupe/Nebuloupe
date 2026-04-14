@@ -16,8 +16,41 @@ SEVERITY_SCORES = {
     "Low": 1
 }
 
+SEVERITY_CANONICAL = {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+}
+
 # Maximum parallel workers for API rule execution
 API_MAX_WORKERS = 10
+
+
+def _normalize_finding(finding, default_provider=""):
+    """Normalize finding fields so output format is consistent across rules."""
+    if not isinstance(finding, dict):
+        return None
+
+    normalized = dict(finding)
+
+    status = str(normalized.get("status", "")).strip().upper()
+    if status:
+        normalized["status"] = status
+
+    severity_raw = str(normalized.get("severity", "Low")).strip().lower()
+    normalized["severity"] = SEVERITY_CANONICAL.get(severity_raw, "Low")
+
+    region_raw = normalized.get("region", "")
+    region = str(region_raw).strip().lower()
+    normalized["region"] = region if region else "global"
+
+    provider_raw = normalized.get("cloud_provider", default_provider)
+    provider = str(provider_raw).strip().lower()
+    if provider:
+        normalized["cloud_provider"] = provider
+
+    return normalized
 
 
 def start_iac_scan(cloud_scope="aws", tf_path="."):
@@ -85,22 +118,34 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
 
     # Discover IaC rules from rules/iac/{cloud_scope}/ and rules/iac/common/
     rules_base_path = 'rules'
-    iac_rules_path = os.path.join(rules_base_path, 'iac', cloud_scope)
+    selected_scopes = [cloud_scope]
+    if cloud_scope == "all":
+        selected_scopes = ["aws", "azure", "gcp"]
+
     common_rules_path = os.path.join(rules_base_path, 'iac', 'common')
-    
-    if not os.path.exists(iac_rules_path):
-        print(f"   [!] No IaC rules directory found at: {iac_rules_path}")
-        return full_report
 
     iac_plugins = []
+    seen_modules = set()
 
     # Load cloud-specific IaC rules
-    for root, dirs, files in os.walk(iac_rules_path):
-        for f in files:
-            if f.endswith('.py') and f != '__init__.py':
-                rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
-                module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
-                iac_plugins.append((cloud_scope, module_path))
+    found_scope_rules = False
+    for scope in selected_scopes:
+        iac_rules_path = os.path.join(rules_base_path, 'iac', scope)
+        if not os.path.exists(iac_rules_path):
+            continue
+        found_scope_rules = True
+        for root, dirs, files in os.walk(iac_rules_path):
+            for f in files:
+                if f.endswith('.py') and f != '__init__.py':
+                    rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
+                    module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
+                    if module_path not in seen_modules:
+                        iac_plugins.append((scope, module_path))
+                        seen_modules.add(module_path)
+
+    if not found_scope_rules:
+        print(f"   [!] No IaC rules directory found for scope: {cloud_scope}")
+        return full_report
 
     # Load cross-cloud common rules (db passwords, SSH keys, etc.)
     if os.path.exists(common_rules_path):
@@ -109,7 +154,9 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
                 if f.endswith('.py') and f != '__init__.py':
                     rel_path = os.path.relpath(os.path.join(root, f), rules_base_path)
                     module_path = os.path.splitext(rel_path)[0].replace(os.sep, '.')
-                    iac_plugins.append((cloud_scope, module_path))
+                    if module_path not in seen_modules:
+                        iac_plugins.append((cloud_scope, module_path))
+                        seen_modules.add(module_path)
 
     print(f"   [*] Loaded {len(iac_plugins)} IaC rule(s) for {cloud_scope.upper()} (incl. common)")
     print()
@@ -125,8 +172,16 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
             findings = module.run_check(None, tf_path=tf_path)
             
             # Integrate findings into report
-            for finding in findings:
+            for raw_finding in findings:
+                finding = _normalize_finding(raw_finding, provider)
+                if not finding:
+                    continue
+
                 full_report["findings"].append(finding)
+
+                # Score only failing findings.
+                if str(finding.get("status", "")).upper() != "FAIL":
+                    continue
                 
                 severity = finding.get("severity", "Low")
                 if severity in full_report["summary"]["severity_counts"]:
@@ -308,8 +363,16 @@ def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_
                 full_report["scan_metadata"]["errors"].append(result["error"])
                 full_report["scan_metadata"]["status"] = "partial"
             
-            for finding in result["findings"]:
+            for raw_finding in result["findings"]:
+                finding = _normalize_finding(raw_finding, result["provider"])
+                if not finding:
+                    continue
+
                 full_report["findings"].append(finding)
+
+                # Score only failing findings.
+                if str(finding.get("status", "")).upper() != "FAIL":
+                    continue
                 
                 # Update metrics
                 severity = finding.get("severity", "Low")

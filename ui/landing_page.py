@@ -4,7 +4,7 @@ Cloud cards are visual HTML. Streamlit buttons sit invisibly over each card
 (no AWS/Azure/GCP button labels). Clicking a card selects that provider;
 Initialize Scan runs the same flow as before.
 """
-import os, sys, json, time, uuid, importlib, base64
+import os, sys, json, time, uuid, importlib, base64, tempfile, shutil, re
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime, timezone
@@ -23,7 +23,23 @@ CLOUD_DEFS = [
     ("aws",   "AWS",   "Amazon Web Services",   "#FF9900", _svg_data_uri("aws.svg"),   70, 44),
     ("azure", "Azure", "Microsoft Azure",        "#60a5fa", _svg_data_uri("azure.svg"), 54, 54),
     ("gcp",   "GCP",   "Google Cloud Platform",  "#34A853", _svg_data_uri("gcp.svg"),   54, 54),
+    (
+        "terraform",
+        "Terraform",
+        "Terraform IaC Scan",
+        "#7B42BC",
+        _svg_data_uri("tf.svg"),
+        56,
+        56,
+    ),
 ]
+
+SEVERITY_CANONICAL = {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+}
 
 _cloud_selector_component = components.declare_component(
     "cloud_selector_component",
@@ -63,6 +79,25 @@ def _render_cloud_selector(selected, disabled=False):
 
 
 def _count_rule_files(cloud: str) -> list:
+    if cloud == "terraform":
+        rules_base = os.path.join(os.path.dirname(__file__), '..', 'rules')
+        iac_paths = [
+            os.path.join(rules_base, 'iac', 'aws'),
+            os.path.join(rules_base, 'iac', 'azure'),
+            os.path.join(rules_base, 'iac', 'gcp'),
+            os.path.join(rules_base, 'iac', 'common'),
+        ]
+        unique_modules = {}
+        for rules_path in iac_paths:
+            if os.path.exists(rules_path):
+                for root, dirs, files in os.walk(rules_path):
+                    for f in sorted(files):
+                        if f.endswith('.py') and f != '__init__.py':
+                            rel = os.path.relpath(os.path.join(root, f), rules_base)
+                            mod_path = os.path.splitext(rel)[0].replace(os.sep, '.')
+                            unique_modules[mod_path] = (f.replace('.py', ''), mod_path)
+        return list(unique_modules.values())
+
     rules_base = os.path.join(os.path.dirname(__file__), '..', 'rules')
     rules_path = os.path.join(rules_base, cloud)
     rule_modules = []
@@ -76,9 +111,106 @@ def _count_rule_files(cloud: str) -> list:
     return rule_modules
 
 
+def _count_iac_rule_files(provider: str) -> list:
+    rules_base = os.path.join(os.path.dirname(__file__), '..', 'rules')
+    iac_paths = [
+        os.path.join(rules_base, 'iac', provider),
+        os.path.join(rules_base, 'iac', 'common'),
+    ]
+
+    unique_modules = {}
+    for rules_path in iac_paths:
+        if os.path.exists(rules_path):
+            for root, dirs, files in os.walk(rules_path):
+                for f in sorted(files):
+                    if f.endswith('.py') and f != '__init__.py':
+                        rel = os.path.relpath(os.path.join(root, f), rules_base)
+                        mod_path = os.path.splitext(rel)[0].replace(os.sep, '.')
+                        unique_modules[mod_path] = (f.replace('.py', ''), mod_path)
+    return list(unique_modules.values())
+
+
+def _pick_terraform_file_via_os_dialog() -> str:
+    try:
+        from tkinter import Tk, filedialog
+
+        root = Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askopenfilename(
+            title="Select Terraform file",
+            filetypes=[("Terraform files", "*.tf *.tf.json"), ("All files", "*.*")],
+        )
+        root.destroy()
+        return selected
+    except Exception:
+        return ""
+
+
+def _detect_tf_cloud_provider(tf_file_path: str) -> str:
+    """Infer cloud provider from Terraform file content."""
+    try:
+        with open(tf_file_path, "r", encoding="utf-8") as fh:
+            content = fh.read().lower()
+    except Exception:
+        return ""
+
+    # Prefer explicit provider blocks first.
+    provider_patterns = {
+        "aws": r'provider\s+"aws"',
+        "azure": r'provider\s+"azurerm"',
+        "gcp": r'provider\s+"google"',
+    }
+    for provider, pattern in provider_patterns.items():
+        if re.search(pattern, content):
+            return provider
+
+    # Fallback to resource/data prefixes when provider block is absent.
+    prefix_patterns = {
+        "aws": [r'\bresource\s+"aws_', r'\bdata\s+"aws_'],
+        "azure": [r'\bresource\s+"azurerm_', r'\bdata\s+"azurerm_'],
+        "gcp": [r'\bresource\s+"google_', r'\bdata\s+"google_'],
+    }
+
+    matches = []
+    for provider, patterns in prefix_patterns.items():
+        if any(re.search(p, content) for p in patterns):
+            matches.append(provider)
+
+    if len(matches) == 1:
+        return matches[0]
+    return ""
+
+
+def _normalize_finding(finding: dict, default_provider: str = "") -> dict:
+    if not isinstance(finding, dict):
+        return {}
+
+    normalized = dict(finding)
+
+    status = str(normalized.get("status", "")).strip().upper()
+    if status:
+        normalized["status"] = status
+
+    severity_raw = str(normalized.get("severity", "Low")).strip().lower()
+    normalized["severity"] = SEVERITY_CANONICAL.get(severity_raw, "Low")
+
+    region_raw = normalized.get("region", "")
+    region = str(region_raw).strip().lower()
+    normalized["region"] = region if region else "global"
+
+    provider_raw = normalized.get("cloud_provider", default_provider)
+    provider = str(provider_raw).strip().lower()
+    if provider:
+        normalized["cloud_provider"] = provider
+
+    return normalized
+
+
 def _run_scan():
     """Run scan file-by-file, updating progress bar after each rule completes."""
     from engine.auth import AuthError, get_aws_session, get_azure_credentials, get_gcp_project
+    from engine.core_loop import start_iac_scan
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _render_progress(progress_slot, pct):
@@ -95,9 +227,30 @@ def _run_scan():
 
     _, col, _ = st.columns([1, 2, 1])
     with col:
-        cloud        = st.session_state.selected_clouds[0]
-        rule_modules = _count_rule_files(cloud)
-        total        = len(rule_modules) or 1
+        cloud = st.session_state.selected_clouds[0]
+        detected_cloud = ""
+
+        if cloud == "terraform":
+            selected_tf = st.session_state.get("terraform_selected_file", "")
+            if not selected_tf or not os.path.isfile(selected_tf):
+                st.session_state.scanning = False
+                st.session_state.auth_error_popup = "[!] Terraform file was not found. Please select a valid .tf file and try again."
+                st.rerun()
+
+            detected_cloud = _detect_tf_cloud_provider(selected_tf)
+            if not detected_cloud:
+                st.session_state.scanning = False
+                st.session_state.auth_error_popup = (
+                    "[!] Could not detect cloud provider from the selected Terraform file. "
+                    "Use a file containing AWS, AzureRM, or Google provider/resource definitions."
+                )
+                st.rerun()
+
+            rule_modules = _count_iac_rule_files(detected_cloud)
+        else:
+            rule_modules = _count_rule_files(cloud)
+
+        total = len(rule_modules) or 1
 
         st.markdown(
             f'<div class="nb-scan-box"><div class="nb-scan-title">Scanning {total} security checks</div></div>',
@@ -107,6 +260,61 @@ def _run_scan():
         _render_progress(progress_slot, 0.0)
         pct_text     = st.empty()
         status_text  = st.empty()
+
+        if cloud == "terraform":
+            selected_tf = st.session_state.get("terraform_selected_file", "")
+            temp_scan_dir = tempfile.mkdtemp(prefix="nebuloupe_tf_")
+            try:
+                tf_name = os.path.basename(selected_tf)
+                shutil.copy2(selected_tf, os.path.join(temp_scan_dir, tf_name))
+
+                status_text.markdown(
+                    f'<p class="nb-scan-status"><span class="nb-scan-idx">[1/1]</span> '
+                    f'<span class="nb-scan-rule">Analyzing {tf_name} ({detected_cloud.upper()})</span></p>',
+                    unsafe_allow_html=True,
+                )
+                _render_progress(progress_slot, 0.35)
+                pct_text.markdown('<p class="nb-scan-pct">35.0%</p>', unsafe_allow_html=True)
+
+                report = start_iac_scan(cloud_scope=detected_cloud, tf_path=temp_scan_dir)
+                if not report:
+                    raise RuntimeError("IaC scan returned no report")
+
+                findings = report.get("findings", [])
+                errors = report.get("scan_metadata", {}).get("errors", [])
+                report.setdefault("scan_metadata", {})["cloud_scope"] = detected_cloud
+                report["scan_metadata"]["target_account"] = selected_tf
+                report["scan_metadata"]["terraform_file"] = selected_tf
+                report["scan_metadata"]["scan_entrypoint"] = "terraform"
+
+                _render_progress(progress_slot, 1.0)
+                pct_text.markdown('<p class="nb-scan-pct">100%</p>', unsafe_allow_html=True)
+                status_text.markdown(
+                    '<p class="nb-scan-status" style="color:#14b8a6">Terraform scan complete — loading results...</p>',
+                    unsafe_allow_html=True,
+                )
+
+                output_path = os.path.join(os.path.dirname(__file__), '..', 'output', 'results.json')
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                with open(output_path, "w") as fh:
+                    json.dump(report, fh, indent=4)
+
+                append_scan_history(report)
+                time.sleep(0.4)
+            except Exception as e:
+                st.session_state.scanning = False
+                st.session_state.auth_error_popup = f"[!] Terraform scan failed: {e}"
+                st.rerun()
+            finally:
+                try:
+                    shutil.rmtree(temp_scan_dir, ignore_errors=True)
+                except Exception:
+                    pass
+
+            st.session_state.results = report
+            st.session_state.scanning = False
+            st.session_state.page = "dashboard"
+            st.rerun()
 
         auth_ctx = None
         try:
@@ -159,7 +367,11 @@ def _run_scan():
                     if error:
                         errors.append(error)
                     else:
-                        findings.extend(mod_findings)
+                        findings.extend(
+                            _normalize_finding(finding, cloud)
+                            for finding in mod_findings
+                            if isinstance(finding, dict)
+                        )
                         
                     completed_count += 1
                     status_text.markdown(
@@ -190,6 +402,9 @@ def _run_scan():
         score_total   = 0
         risk_by_cloud = {"aws": 0, "azure": 0, "gcp": 0}
         for f in findings:
+            if str(f.get("status", "")).upper() != "FAIL":
+                continue
+
             sev = f.get("severity", "Low")
             if sev in sev_counts:
                 sev_counts[sev] += 1
@@ -232,7 +447,7 @@ def _run_scan():
         append_scan_history(report)
         time.sleep(0.4)
 
-    st.session_state.results  = report
+        st.session_state.results  = report
     st.session_state.scanning = False
     st.session_state.page     = "dashboard"
     st.session_state.pop("azure_creds", None)
@@ -247,6 +462,8 @@ def page_landing():
         st.session_state.scanning = False
     if "auth_error_popup" not in st.session_state:
         st.session_state.auth_error_popup = None
+    if "terraform_selected_file" not in st.session_state:
+        st.session_state.terraform_selected_file = ""
 
     if st.session_state.auth_error_popup:
         _show_auth_error_popup(st.session_state.auth_error_popup)
@@ -265,11 +482,13 @@ def page_landing():
             pass
         st.rerun()
 
+    logo_uri = _svg_data_uri("logo.svg")
+
     # ── Nav ───────────────────────────────────────────────────────────────────
-    st.markdown("""
+    st.markdown(f"""
 <div class="nb-nav">
   <div class="nb-nav-logo">
-    <span class="nb-nav-icon">&#128301;</span>
+    <img class="nb-nav-icon" src="{logo_uri}" alt="Nebuloupe logo" />
     <span class="nb-nav-brand">NEBULOUPE</span>    <span class="nb-nav-tag">CMSS</span>
   </div>
     <div class="nb-nav-actions">
@@ -283,6 +502,55 @@ def page_landing():
 
     if st.session_state.show_history_panel:
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+        st.markdown(
+            """
+<style>
+div[class*="st-key-inline_hist_row_"] button {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    padding: 14px 18px !important;
+    border-radius: 14px !important;
+    border: 1px solid #1e293b !important;
+    background: #0a0f1e !important;
+    color: #e2e8f0 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    line-height: 1.6 !important;
+    text-align: left !important;
+    text-indent: 0 !important;
+    white-space: pre-line !important;
+    box-shadow: none !important;
+}
+div[class*="st-key-inline_hist_row_"] button::before,
+div[class*="st-key-inline_hist_row_"] button::after {
+    content: none !important;
+    display: none !important;
+}
+div[class*="st-key-inline_hist_row_"] button:hover {
+    transform: none !important;
+    border-color: #334155 !important;
+    background: #0b1220 !important;
+    box-shadow: none !important;
+}
+div[class*="st-key-inline_hist_row_"] button > div {
+    width: 100% !important;
+    display: block !important;
+    text-align: left !important;
+}
+div[class*="st-key-inline_hist_row_"] button p {
+    margin: 0 !important;
+    text-align: left !important;
+}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
         top_l, top_r = st.columns([4.5, 1.2])
         with top_l:
             st.markdown('<div class="nb-sec-hdr">Previous Scans</div>', unsafe_allow_html=True)
@@ -302,23 +570,17 @@ def page_landing():
                 status = str(item.get("status", "unknown")).upper()
                 started = item.get("scan_started_at", "")
 
-                info_col, btn_col = st.columns([5, 1])
-                with info_col:
-                    st.markdown(
-                        f"""
-<div class=\"nb-stat-card\" style=\"margin-bottom:10px;\">
-  <div class=\"nb-stat-label\">{cloud} • {status}</div>
-  <div style=\"font-size:13px;color:#e2e8f0;\">Findings: {findings} • Risk Score: {score}</div>
-  <div style=\"font-size:11px;color:#94a3b8;margin-top:4px;\">Started: {started}</div>
-</div>
-""",
-                        unsafe_allow_html=True,
-                    )
-                with btn_col:
-                    if st.button("Open", key=f"open_hist_inline_{i}", width="stretch"):
-                        st.session_state.results = item.get("report")
-                        st.session_state.page = "dashboard"
-                        st.rerun()
+                row_label = (
+                    f"{cloud} • {status}\n"
+                    f"Findings: {findings} • Risk Score: {score}\n"
+                    f"Started: {started}"
+                )
+                if st.button(row_label, key=f"inline_hist_row_{i}", width="stretch"):
+                    st.session_state.results = item.get("report")
+                    st.session_state.page = "dashboard"
+                    st.rerun()
+
+                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
         # Keep history as an inline view on landing page.
         return
@@ -329,12 +591,12 @@ def page_landing():
   <div class="nb-hero-content">
         <div class="nb-hero-eyebrow"><span class="nb-eyebrow-dot"></span>Cloud Misconfiguration Security Scanner</div>
         <h1 class="nb-hero-title">The Intelligent<br><span class="nb-hero-accent">Multi-Cloud</span><br>Security Scanner</h1>
-    <p class="nb-hero-sub">Detect misconfigurations, compliance violations, and security risks across AWS, Azure &amp; GCP &#8212; in seconds.</p>
+    <p class="nb-hero-sub">Detect misconfigurations, compliance violations, and security risks across AWS, Azure, GCP, and Terraform IaC &#8212; in seconds.</p>
   </div>
   <div class="nb-stats-row">
     <div class="nb-stat-item"><span class="nb-stat-n">50+</span><span class="nb-stat-l">Security Checks</span></div>
     <div class="nb-stat-div"></div>
-    <div class="nb-stat-item"><span class="nb-stat-n">3</span><span class="nb-stat-l">Cloud Providers</span></div>
+    <div class="nb-stat-item"><span class="nb-stat-n">4</span><span class="nb-stat-l">Scan Targets</span></div>
     <div class="nb-stat-div"></div>
     <div class="nb-stat-item"><span class="nb-stat-n">100%</span><span class="nb-stat-l">Open Source</span></div>
   </div>
@@ -343,7 +605,7 @@ def page_landing():
 
     # ── Cloud provider selection ───────────────────────────────────────────────
     st.markdown(
-        '<p class="nb-step-lbl" style="text-align:center;margin-top:8px;">&#9312; Select Cloud Provider</p>',
+        '<p class="nb-step-lbl" style="text-align:center;margin-top:8px;">&#9312; Select Scan Target</p>',
         unsafe_allow_html=True,
     )
 
@@ -353,7 +615,7 @@ def page_landing():
         selected_from_component = _render_cloud_selector(selected=selected, disabled=is_scanning)
         if (
             selected_from_component
-            and selected_from_component in {"aws", "azure", "gcp"}
+            and selected_from_component in {"aws", "azure", "gcp", "terraform"}
             and selected_from_component != selected
             and not is_scanning
         ):
@@ -409,6 +671,12 @@ def page_landing():
                 width="stretch",
                 disabled=not selected,
             ):
+                if selected == "terraform":
+                    selected_tf_file = _pick_terraform_file_via_os_dialog()
+                    if not selected_tf_file:
+                        st.warning("Terraform file selection was cancelled.")
+                        return
+                    st.session_state.terraform_selected_file = selected_tf_file
                 st.session_state.scanning = True
                 st.rerun()
 
@@ -434,9 +702,9 @@ def page_landing():
             )
 
     # ── Footer ────────────────────────────────────────────────────────────────
-    st.markdown("""
+    st.markdown(f"""
 <div class="nb-footer">
-  <div class="nb-footer-brand">&#128301; NEBULOUPE</div>
+    <div class="nb-footer-brand"><img class="nb-brand-logo" src="{logo_uri}" alt="Nebuloupe logo" /> NEBULOUPE</div>
   <div class="nb-footer-links">
     <span class="nb-footer-link">Documentation</span>
     <span class="nb-footer-sep">&#183;</span>
