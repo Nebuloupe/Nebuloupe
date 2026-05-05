@@ -25,6 +25,7 @@ SEVERITY_CANONICAL = {
 
 # Maximum parallel workers for API rule execution
 API_MAX_WORKERS = 10
+ALLOWED_FINDING_STATUSES = {"PASS", "FAIL"}
 
 
 def _normalize_finding(finding, default_provider=""):
@@ -51,6 +52,12 @@ def _normalize_finding(finding, default_provider=""):
         normalized["cloud_provider"] = provider
 
     return normalized
+
+
+def _is_allowed_finding_status(finding):
+    """Return True only for PASS/FAIL findings that should be included in reports."""
+    status = str(finding.get("status", "")).strip().upper()
+    return status in ALLOWED_FINDING_STATUSES
 
 
 def start_iac_scan(cloud_scope="aws", tf_path="."):
@@ -175,6 +182,8 @@ def start_iac_scan(cloud_scope="aws", tf_path="."):
             for raw_finding in findings:
                 finding = _normalize_finding(raw_finding, provider)
                 if not finding:
+                    continue
+                if not _is_allowed_finding_status(finding):
                     continue
 
                 full_report["findings"].append(finding)
@@ -366,6 +375,8 @@ def start_scan(aws_session=None, azure_credential=None, gcp_project=None, cloud_
             for raw_finding in result["findings"]:
                 finding = _normalize_finding(raw_finding, result["provider"])
                 if not finding:
+                    continue
+                if not _is_allowed_finding_status(finding):
                     continue
 
                 full_report["findings"].append(finding)
