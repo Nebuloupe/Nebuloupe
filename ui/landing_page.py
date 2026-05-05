@@ -41,6 +41,8 @@ SEVERITY_CANONICAL = {
     "low": "Low",
 }
 
+ALLOWED_FINDING_STATUSES = {"PASS", "FAIL"}
+
 _cloud_selector_component = components.declare_component(
     "cloud_selector_component",
     path=os.path.join(os.path.dirname(__file__), "components", "cloud_selector"),
@@ -207,6 +209,11 @@ def _normalize_finding(finding: dict, default_provider: str = "") -> dict:
     return normalized
 
 
+def _is_allowed_finding(finding: dict) -> bool:
+    status = str(finding.get("status", "")).strip().upper()
+    return status in ALLOWED_FINDING_STATUSES
+
+
 def _run_scan():
     """Run scan file-by-file, updating progress bar after each rule completes."""
     from engine.auth import AuthError, get_aws_session, get_azure_credentials, get_gcp_project
@@ -368,9 +375,11 @@ def _run_scan():
                         errors.append(error)
                     else:
                         findings.extend(
-                            _normalize_finding(finding, cloud)
+                            normalized
                             for finding in mod_findings
                             if isinstance(finding, dict)
+                            for normalized in [_normalize_finding(finding, cloud)]
+                            if normalized and _is_allowed_finding(normalized)
                         )
                         
                     completed_count += 1
